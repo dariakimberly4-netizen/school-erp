@@ -25,13 +25,13 @@ Student:['Profile','Schedule','Assignments','Attendance','Grades','Report Card',
 Parent:['My Child','Academics','Fees & Payments','Communication','Requests & Forms','Safety & Pickup','Parent Account']};
 const parentGroups={
 'Parent Hub':['What Changed Today?','Needs My Action','Upcoming This Week','Child Timeline','Sibling Overview'],
-'My Child':['My Child','Enrollment Status','Attendance','Grades','Report Card','Behavior & Conduct','Health & Clinic'],
-'Academics':['Schedule & Work','School Calendar'],
-'Fees & Payments':['Fees','Payments','Payment Plan Tracker'],
-'Communication':['Parent Inbox','Messages','Teacher Directory','Announcements','Notifications Center','Alerts'],
-'Requests & Forms':['Request Center','Absence Requests','Appointments','Documents & Forms','Consent Forms','Events & RSVP','Document Tracking'],
-'Safety & Pickup':['Emergency Contacts','Pickup Guardians'],
-'Parent Account':['Activity History','Parent Settings','Help & Contacts']
+'My Child':['Student 360°','My Child','Enrollment Status','Attendance','Grades','Exam & Quiz Results','Learning Progress','Assignment Details','Teacher Feedback','Report Card','Behavior & Conduct','Health & Clinic'],
+'Academics':['Schedule & Work','School Calendar','Class Materials','School Handbook'],
+'Fees & Payments':['Fees','Fee Breakdown','Payments','Payment Receipt Viewer','Payment Plan Tracker'],
+'Communication':['Parent Inbox','Messages','Teacher Directory','Teacher Feedback','Announcements','Notifications Center','Notification History','Alerts'],
+'Requests & Forms':['Request Center','Absence Requests','Excuse Letter Status','Appointments','Meeting History','Documents & Forms','Official Document Requests','Consent Forms','Events & RSVP','Document Tracking'],
+'Safety & Pickup':['Emergency Contacts','Pickup Guardians','Pickup Changes'],
+'Parent Account':['Activity History','Audit Trail','Parent Settings','Help & Contacts']
 };
 const parentLeafs=[...new Set(Object.values(parentGroups).flat())];
 const submenus={
@@ -183,9 +183,24 @@ $('panel-content').replaceChildren(box);if(!$('panel').open)$('panel').showModal
 function openParent(name){
 if(activeRole!=='Parent'||!parentLeafs.includes(name))return;
 saveDemo();
-const special=['Child Timeline','What Changed Today?','Upcoming This Week','Parent Inbox','Request Center','Sibling Overview','Payment Plan Tracker','Document Tracking','Activity History','School Calendar','Enrollment Status','Behavior & Conduct','Health & Clinic','Documents & Forms','Events & RSVP','Teacher Directory','Notifications Center','Parent Settings','Help & Contacts','Absence Requests','Appointments','Messages','Alerts','Report Card','Emergency Contacts','Pickup Guardians'];
+const special=['Student 360°','Exam & Quiz Results','Learning Progress','Assignment Details','Teacher Feedback','Class Materials','School Handbook','Fee Breakdown','Payment Receipt Viewer','Notification History','Excuse Letter Status','Meeting History','Official Document Requests','Pickup Changes','Audit Trail','Child Timeline','What Changed Today?','Upcoming This Week','Parent Inbox','Request Center','Sibling Overview','Payment Plan Tracker','Document Tracking','Activity History','School Calendar','Enrollment Status','Behavior & Conduct','Health & Clinic','Documents & Forms','Events & RSVP','Teacher Directory','Notifications Center','Parent Settings','Help & Contacts','Absence Requests','Appointments','Messages','Alerts','Report Card','Emergency Contacts','Pickup Guardians'];
 if(!special.includes(name)){legacyParent(name);return}
 currentModule=name;const c=child(),s=parentState[c.id],root=demoPanel(name,c.name+' · '+c.grade+' · DEMO');
+if(name==='Student 360°'){const latest=c.grades[c.grades.length-1];root.append(card('Student Snapshot',[c.name,c.grade,'Adviser · '+c.adviser,'Attendance · '+c.attendance[0].join(' · '),'Latest grade · '+latest.join(' · '),'Assignments needing attention · '+c.work.filter(w=>w[2]!=='Submitted').length,'Balance · '+money(c.balance)]),card('Teacher feedback',['Participates well in class.','Please review upcoming assignments.']),action('Full grades',()=>openParent('Grades')),action('Assignments',()=>openParent('Assignment Details')),action('Report Card',()=>openParent('Report Card')))}
+if(name==='Exam & Quiz Results')root.append(card('Recent assessments',['Mathematics Quiz 2 · 18/20 · Very Good','Science Quiz 1 · 17/20 · Good','English Activity · 19/20 · Excellent']));
+if(name==='Learning Progress')root.append(card('Subject progress',['Mathematics · On track','Science · On track','English · Strong progress','Filipino · On track']),el('p','Sample learning indicators only; this demo does not rank students.','hint'));
+if(name==='Assignment Details')c.work.forEach(w=>root.append(card(w[0],['Due · '+w[1],'Status · '+w[2],'Sample instruction · Review the lesson and complete the assigned activity.','Teacher feedback · Demo only.'])));
+if(name==='Teacher Feedback')root.append(card(c.adviser,['Adviser note · Participates well and works cooperatively.']),card('Subject teachers',['Mathematics · Continue practicing problem solving.','Science · Good participation in activities.']));
+if(name==='Class Materials')root.append(card('Sample materials',['Mathematics · Week 4 Review Sheet','Science · Matter and Mixtures Notes','English · Reading Activity']),el('p','Preview-only demo materials; no real student files are stored.','hint'));
+if(name==='School Handbook')root.append(card('Parent Handbook',['Attendance & punctuality','Student conduct','Assessment & grading','School communication','Safety & dismissal procedures']));
+if(name==='Fee Breakdown')root.append(card('Sample assessment',['Tuition / school fees · '+money(Math.max(c.balance,1500)),'Activity fee · ₱500','Other sample charges · ₱0','Current sample balance · '+money(c.balance)]));
+if(name==='Payment Receipt Viewer')root.append(card('Sample receipt',['Reference · DEMO-2026-0915','Date · Sep 15, 2026','Amount · '+money(c.payments[0]?.[2]||1000),'Status · Sample paid transaction']),el('p','Not an official receipt. Demo only.','hint'));
+if(name==='Notification History')root.append(card('Notification history',['Today · Assignment reminder','Today · Parent meeting announcement','Sep 20 · Fee reminder','Sep 19 · Teacher message']));
+if(name==='Excuse Letter Status')root.append(card('Absence / excuse tracking',s.absences.length?s.absences.map(x=>(x.date||'Sample date')+' · '+(x.status||'Submitted')):['No submitted excuse request in this demo.']),action('Submit absence request',()=>openParent('Absence Requests')));
+if(name==='Meeting History')root.append(card('Parent-teacher meetings',['Upcoming · Sep 28, 2026 · Parent Meeting','Previous · Aug 21, 2026 · Sample adviser conference']),action('Request appointment',()=>openParent('Appointments')));
+if(name==='Official Document Requests')root.append(card('Request a school document',['Certificate of Enrollment','Good Moral Certificate','Certified Report Card Copy']),action('View request tracking',()=>openParent('Document Tracking')));
+if(name==='Pickup Changes')root.append(card('Temporary pickup authorization',['Current default guardian · See Pickup Guardians','Temporary changes require school confirmation.']),el('p','Demo only. Do not enter real guardian information.','hint'),action('Manage pickup guardians',()=>openParent('Pickup Guardians')));
+if(name==='Audit Trail')root.append(card('Parent activity audit',['Sep 21 · Parent portal opened','Sep 21 · Notifications reviewed',s.consent!=='Awaiting response'?'Consent updated · '+s.consent:'Consent form awaiting response',s.messages.length+' demo message(s) created']),el('p','Browser-local demo activity only.','hint'));
 if(name==='Child Timeline'){root.append(card('Today',['Teacher message · Please review assignments.','Attendance · Latest sample: '+c.attendance[0].join(' · ')]),card('Recent schoolwork',c.work.map(w=>w[0]+' · '+w[2])),card('Recent payment',c.payments.map(p=>p[1]+' · '+money(p[2])+' · '+p[3])))}
 if(name==='What Changed Today?')root.append(card('Since your last demo visit',['Unread alerts: '+unread(c),'Consent: '+s.consent,'Latest schoolwork: '+c.work[0][0]+' · '+c.work[0][2],'Latest grade sample: '+c.grades[c.grades.length-1].join(' · ')]),action('Open Parent Inbox',()=>openParent('Parent Inbox')));
 if(name==='Upcoming This Week')root.append(card('Coming up',[c.work[0][0]+' · Due '+c.work[0][1],'Parent meeting · Sep 28 · 3:00 PM','Museum visit · Oct 9 · consent required']),action('School calendar',()=>openParent('School Calendar')));
