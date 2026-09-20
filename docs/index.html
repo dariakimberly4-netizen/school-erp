@@ -5,6 +5,7 @@
 @media(max-width:650px){.shell{padding:16px}.roles{grid-template-columns:repeat(2,1fr);gap:12px}.role{padding:18px 14px;min-height:126px}.bar{gap:8px}.brand{letter-spacing:.1em}.orbit-wrap{margin:16px -8px 0}.node{padding:7px;width:25%}.center{width:31%}.center span{font-size:14px}.orbit-title{margin-top:18px}.items{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 .parent-card{background:#13263e;border:1px solid #385271;border-radius:16px;padding:18px;margin:14px 0}.parent-card h2{font-size:20px;margin:0 0 8px}.parent-card p{margin:8px 0}.parent-form{display:grid;gap:14px;margin-top:20px}.parent-form label,#child-bar label{display:grid;gap:6px;font-weight:650}.parent-form input,.parent-form select,.parent-form textarea,#child-select{width:100%;font:inherit;color:#f4f7ff;background:#071226;border:1px solid #59718d;padding:13px;border-radius:10px;min-height:48px}.parent-form textarea{min-height:100px}.primary{background:#167487;border:1px solid #7ed5db;border-radius:12px;min-height:52px;padding:12px 18px;font-weight:750}.status{font-size:14px;color:#a9eef0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:13px;text-align:left;border-bottom:1px solid #344963;white-space:nowrap}#child-bar{max-width:660px;margin:20px auto}#parent-status{color:#a9eef0}button:disabled{opacity:.5;cursor:default}@media print{body>*{display:none!important}body>dialog[open]{display:block!important;position:static;width:100%;max-height:none;border:0;background:white;color:black}dialog .panel-actions,dialog button,dialog form{display:none!important}dialog p{color:black}.parent-card{background:white;color:black}}
+.parent-center{padding:8px;gap:5px;z-index:1}.parent-center strong{font-size:clamp(16px,3.8vw,24px);line-height:1.15;max-width:100%;overflow-wrap:break-word}.today-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}.today-actions button{min-height:56px}.today-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.today-grid .parent-card{margin:0}.today-grid .parent-card:last-child{grid-column:1/-1}@media(max-width:540px){.today-grid,.today-actions{grid-template-columns:1fr}}
 </style></head><body>
 <section id="login" class="shell" aria-labelledby="login-title"><header class="bar"><div class="brand">SCHOOL / ORBIT</div><span class="tag">DEMO</span></header><div class="intro"><div class="brand">YOUR SCHOOL WORKSPACE</div><h1 id="login-title">Choose your role.</h1><p>One tap to enter your school orbit.</p></div><div class="roles" id="roles"></div><p class="hint">Demo access only. No password required. These role menus are a preview, not secure accounts.</p></section>
 <main id="app" class="shell" hidden><header class="bar"><div><div class="brand">SCHOOL / ORBIT</div><div class="tag" id="role-label"></div></div><button class="outline" id="logout">Sign out</button></header><div class="orbit-title"><h1 id="welcome" tabindex="-1">Your school orbit</h1><p>Tap a circle to open your workspace.</p></div><div id="child-bar" hidden><label for="child-select">Viewing child</label><select id="child-select"></select><p class="hint">Fictional sample records. Requests stay in this session and are not sent to school. Refresh resets this demo. Use sample information only.</p></div><div class="orbit-wrap"><nav class="orbit" id="orbit" aria-label="Role modules"></nav></div><div class="pager"><button class="outline" id="previous">← Previous</button><span id="page" aria-live="polite"></span><button class="outline" id="next">Next →</button></div><p class="foot">Steady circles · Large tap targets · Demo workspace</p></main>
@@ -56,7 +57,7 @@ let activeRole=null,page=0,currentModule='';
 const $=id=>document.getElementById(id);
 roles.forEach(role=>{const b=document.createElement('button');b.className='role';const strong=document.createElement('strong');strong.textContent=role;const hint=document.createElement('span');hint.textContent='Enter demo →';b.append(strong,hint);b.onclick=()=>enter(role);$('roles').append(b)});
 function enter(role){activeRole=role;page=0;$('login').hidden=true;$('app').hidden=false;$('role-label').textContent=role+' · Demo';render();syncChild();$('welcome').focus()}
-function render(){const all=menus[activeRole],pages=Math.ceil(all.length/6),slice=all.slice(page*6,page*6+6);$('orbit').replaceChildren();const center=document.createElement('div');center.className='center';const name=document.createElement('strong');name.textContent='School';const who=document.createElement('span');who.textContent=activeRole;center.append(name,who);$('orbit').append(center);slice.forEach((label,i)=>{const a=i/slice.length*2*Math.PI-Math.PI/2,b=document.createElement('button');b.className='node';b.style.left=(50+Math.cos(a)*37)+'%';b.style.top=(50+Math.sin(a)*37)+'%';const n=document.createElement('small');n.textContent=String(page*6+i+1).padStart(2,'0');const t=document.createElement('span');t.textContent=label;b.append(n,t);b.onclick=()=>openModule(label);$('orbit').append(b)});$('page').textContent='Modules '+(page*6+1)+'–'+Math.min((page+1)*6,all.length)+' of '+all.length;$('previous').disabled=page===0;$('next').disabled=page===pages-1}
+function render(){const all=menus[activeRole],pages=Math.ceil(all.length/6),slice=all.slice(page*6,page*6+6);$('orbit').replaceChildren();const center=document.createElement(activeRole==='Parent'?'button':'div');center.className='center';if(activeRole==='Parent'){center.type='button';center.className+=' parent-center';center.setAttribute('aria-label','View My Child Today for '+child().name);center.onclick=openChildToday;}const name=document.createElement('strong');name.textContent=activeRole==='Parent'?child().name:'School';const who=document.createElement('span');who.textContent=activeRole==='Parent'?'View today':activeRole;center.append(name,who);$('orbit').append(center);slice.forEach((label,i)=>{const a=i/slice.length*2*Math.PI-Math.PI/2,b=document.createElement('button');b.className='node';b.style.left=(50+Math.cos(a)*37)+'%';b.style.top=(50+Math.sin(a)*37)+'%';const n=document.createElement('small');n.textContent=String(page*6+i+1).padStart(2,'0');const t=document.createElement('span');t.textContent=label;b.append(n,t);b.onclick=()=>openModule(label);$('orbit').append(b)});$('page').textContent='Modules '+(page*6+1)+'–'+Math.min((page+1)*6,all.length)+' of '+all.length;$('previous').disabled=page===0;$('next').disabled=page===pages-1}
 function openModule(name){if(activeRole==='Parent'){openParent(name);return;}if(!activeRole||!menus[activeRole].includes(name))return;currentModule=name;$('module-back').hidden=true;$('panel-title').textContent=name;$('panel-description').textContent=activeRole+' workspace · Demo';const items=activeRole==='Administrator'?mods.find(m=>m[0]===name)?.[1]:submenus[name];const list=items||[name+' Overview',name+' Records'];const box=document.createElement('div');box.className='items';list.forEach(label=>{const b=document.createElement('button');b.className='item';b.textContent=label;b.onclick=()=>openFunction(label);box.append(b)});$('panel-content').replaceChildren(box);if(!$('panel').open)$('panel').showModal()}
 function openFunction(label){$('panel-title').textContent=label;$('module-back').hidden=false;const box=document.createElement('div');box.className='empty';const h=document.createElement('h2');h.textContent='No records connected';const p=document.createElement('p');p.textContent='This is the '+activeRole.toLowerCase()+' demo workspace for '+label.toLowerCase()+'. Live school records and saving are not connected yet.';box.append(h,p);$('panel-content').replaceChildren(box)}
 $('module-back').onclick=()=>openModule(currentModule);
@@ -98,6 +99,47 @@ if(name==='Alerts'){const alerts=[['fees','Fee reminder','Sample balance: '+mone
 if(name==='Announcements')root.append(card('Parent meeting',['Sample announcement: September 28, 2026, 3:00 PM.','Review class progress with the adviser.']),card('School calendar',['Sample announcement: museum visit on October 9, 2026.','Visit Consent Forms to try the demo approval.']));
 if(name==='Messages'){root.append(card(c.adviser,['Sample message: Welcome to the parent portal. Please review your child’s assignments.']));s.messages.forEach(v=>root.append(card('Your demo draft',[v.text,'Saved locally in this session · not sent'])));root.append(form([{key:'text',label:'Draft message (sample information only)',type:'textarea'}],'Save demo draft',v=>{s.messages.push(v);openParent(name);feedback('Demo message draft saved. Nothing was sent.')}))}
 if(!$('panel').open)$('panel').showModal();
+}
+
+
+function schoolClock(now=new Date()){
+const date=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Manila',month:'short',day:'numeric',year:'numeric'}).format(now);
+const day=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Manila',weekday:'long'}).format(now);
+const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
+return {date,day,minutes:Number(parts.find(p=>p.type==='hour').value)*60+Number(parts.find(p=>p.type==='minute').value)};
+}
+function scheduleSummary(c,clock){
+const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const today=c.schedule.filter(r=>r[0]===clock.day);
+const upcoming=c.schedule.map(r=>{const match=r[1].match(/(\d+):(\d+)\s*(AM|PM)/);if(!match)return null;const minute=(Number(match[1])%12+(match[3]==='PM'?12:0))*60+Number(match[2]);let delta=((days.indexOf(r[0])-days.indexOf(clock.day)+7)%7)*1440+minute-clock.minutes;if(delta<0)delta+=7*1440;return {row:r,delta};}).filter(Boolean).sort((a,b)=>a.delta-b.delta);
+return {today,next:upcoming[0]?.row};
+}
+function openChildToday(){
+if(activeRole!=='Parent')return;
+const c=child(),s=parentState[c.id],clock=schoolClock(),schedule=scheduleSummary(c,clock);
+currentModule='My Child Today';$('module-back').hidden=true;$('panel-title').textContent='My Child Today';
+$('panel-description').textContent=c.name+' · '+c.grade+' · '+clock.date+' (Philippine time)';
+const root=el('div');root.append(el('p','Fictional demo records. Today’s date is real; school information below is sample data.','hint'));
+const grid=el('div',undefined,'today-grid');
+const entry=c.attendance.find(r=>r[0]===clock.date);
+const attendance=card('Attendance',entry?[entry[1]+' · '+clock.date]:['Not recorded for today.',c.attendance.length?'Latest sample: '+c.attendance[0].join(' · '):'No attendance records.']);
+attendance.append(action('View attendance',()=>openParent('Attendance')));grid.append(attendance);
+const scheduleLines=schedule.today.length?schedule.today.map(r=>r[1]+' · '+r[2]):['No classes listed for today in this sample schedule.'];
+if(schedule.next)scheduleLines.push('Next scheduled class: '+schedule.next[0]+' · '+schedule.next[1]+' · '+schedule.next[2]);
+const classes=card('Today’s classes',scheduleLines);classes.append(action('View schedule',()=>openParent('Schedule & Work')));grid.append(classes);
+const work=c.work.filter(r=>r[2]!=='Submitted');
+const tasks=card('Schoolwork',work.length?work.map(r=>r[0]+' · Due '+r[1]+' · '+r[2]):['No outstanding sample assignments.']);tasks.append(action('View assignments',()=>openParent('Schedule & Work')));grid.append(tasks);
+const fees=card('Fees',[money(c.balance)+' outstanding','Sample balance only.']);fees.append(action('View fees',()=>openParent('Fees')));grid.append(fees);
+const attention=card('Needs your attention',[s.consent==='Awaiting response'?'Consent needed: school museum visit.':'Museum visit consent: '+s.consent,'Teacher message from '+c.adviser+': please review your child’s assignments.']);
+attention.append(action('Review consent',()=>openParent('Consent Forms')));grid.append(attention);root.append(grid);
+const actions=el('div',undefined,'today-actions');actions.append(action('Switch Child',openTodayChildPicker,'primary'),action('Message Teacher',()=>openParent('Messages'),'primary'));root.append(actions);$('panel-content').replaceChildren(root);
+if(!$('panel').open)$('panel').showModal();
+}
+function openTodayChildPicker(){
+if(activeRole!=='Parent')return;$('panel-title').textContent='Switch Child';$('panel-description').textContent='Choose a child to view their daily summary.';
+const root=el('div',undefined,'parent-form');
+children.forEach(c=>{const b=action(c.name+' · '+c.grade+(c.id===selectedChild?' · Selected':''),()=>{selectedChild=c.id;syncChild();render();openChildToday()},'item');root.append(b)});
+root.append(action('Back to summary',openChildToday));$('panel-content').replaceChildren(root);
 }
 
 </script></body></html>
