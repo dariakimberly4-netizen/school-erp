@@ -22,7 +22,7 @@ Cashier:['Student Accounts','Assessments','Payments','Receipts','Balances','Dail
 Librarian:['Book Catalog','Borrow / Return','Borrowers','Overdue Books','Inventory','Reports'],
 Staff:['Dashboard','Tasks','Attendance','Calendar','Announcements','Messages'],
 Student:['Profile','Schedule','Assignments','Attendance','Grades','Report Card','Fees','Library','Announcements','Calendar','Messages','Documents'],
-Parent:['My Child','Attendance','Grades','Fees','Schedule & Work','Absence Requests','Payments','Consent Forms','Appointments','Alerts','Announcements','Messages','Report Card','Emergency Contacts','Pickup Guardians']};
+Parent:['My Child','Needs My Action','Attendance','Grades','Fees','Schedule & Work','School Calendar','Enrollment Status','Behavior & Conduct','Health & Clinic','Documents & Forms','Events & RSVP','Teacher Directory','Notifications Center','Absence Requests','Payments','Consent Forms','Appointments','Alerts','Announcements','Messages','Report Card','Emergency Contacts','Pickup Guardians','Parent Settings','Help & Contacts']};
 const submenus={
 Admissions:['New Admission','Applications','Admission Documents'],
 Enrollment:['Enrollment List','Enrollment Status','Class Assignment'],
@@ -165,9 +165,20 @@ function demoPanel(title,description){$('module-back').hidden=true;$('panel-titl
 function openParent(name){
 if(activeRole!=='Parent'||!menus.Parent.includes(name))return;
 saveDemo();
-const special=['Absence Requests','Appointments','Messages','Alerts','Report Card','Emergency Contacts','Pickup Guardians'];
+const special=['Needs My Action','School Calendar','Enrollment Status','Behavior & Conduct','Health & Clinic','Documents & Forms','Events & RSVP','Teacher Directory','Notifications Center','Parent Settings','Help & Contacts','Absence Requests','Appointments','Messages','Alerts','Report Card','Emergency Contacts','Pickup Guardians'];
 if(!special.includes(name)){legacyParent(name);return}
 currentModule=name;const c=child(),s=parentState[c.id],root=demoPanel(name,c.name+' · '+c.grade+' · DEMO');
+if(name==='Needs My Action'){root.append(card('Action center',[s.consent==='Awaiting response'?'Consent form needs your response.':'Consent form: '+s.consent,c.balance?'Outstanding sample balance: '+money(c.balance):'No balance due.',c.work.some(w=>w[2]==='Missing')?'A sample assignment is marked missing.':'No missing sample assignments.',unread(c)+' unread demo alerts.']),action('Review consent',()=>openParent('Consent Forms')),action('View fees',()=>openParent('Fees')),action('Open notifications',()=>openParent('Notifications Center')))}
+if(name==='School Calendar')root.append(card('September 2026',['Sep 28 · Parent meeting · 3:00 PM']),card('October 2026',['Oct 9 · Museum visit','Oct 19–23 · Sample quarterly examinations']));
+if(name==='Enrollment Status')root.append(card('Enrolled · School Year 2026–2027',[c.name,c.grade,'Section confirmed','Sample requirements: Complete']));
+if(name==='Behavior & Conduct')root.append(card('Conduct summary',['Sample conduct rating: Very Good','Teacher observation: Participates well in class.','No sample incidents recorded.']));
+if(name==='Health & Clinic')root.append(card('School clinic · Demo',['No clinic visit recorded this month.','Emergency contact information is managed separately.','Use fictional health information only in this demo.']),action('Emergency contacts',()=>openParent('Emergency Contacts')));
+if(name==='Documents & Forms')root.append(card('Available sample forms',['Enrollment information sheet','Excuse letter template','Document request form']),card('Submitted requirements',['Birth certificate · Sample status: Received','Report card copy · Sample status: Received']),el('p','File uploading is intentionally not connected in this demo.','hint'));
+if(name==='Events & RSVP'){const b=card('Parent Meeting · Sep 28, 2026',['3:00 PM · School campus','Demo RSVP only.']);b.append(action('RSVP Yes',()=>feedback('Demo RSVP saved: Attending.')),action('RSVP No',()=>feedback('Demo RSVP saved: Not attending.')));root.append(b,card('Museum Visit · Oct 9, 2026',['See Consent Forms for the sample permission response.']))}
+if(name==='Teacher Directory')root.append(card(c.adviser,['Class Adviser · '+c.grade,'Use Messages to contact this sample teacher.']),card('Mr. Dela Cruz',['Mathematics · Sample faculty record']),card('Ms. Lim',['Science · Sample faculty record']),action('Message adviser',()=>openParent('Messages')));
+if(name==='Notifications Center'){root.append(card('All notifications',[unread(c)+' unread demo alerts.','Fee reminder · '+money(c.balance),'Assignment reminder · '+c.work[0][0],'Parent meeting announcement · Sep 28']),action('Open alerts',()=>openParent('Alerts')))}
+if(name==='Parent Settings')root.append(card('Parent preferences',['Large tap targets: On','Reduced motion friendly: On','Demo notifications: On','Language: English']),el('p','These are display-only sample settings.','hint'));
+if(name==='Help & Contacts')root.append(card('School Contacts',['Registrar · Enrollment and records','Cashier · Fees and receipts','Class Adviser · Academic concerns','School Clinic · Student health concerns','Administration · General concerns']),el('p','Demo directory only. No real contact details are shown.','hint'));
 if(name==='Absence Requests'||name==='Appointments'){
 const absence=name==='Absence Requests',key=absence?'absences':'appointments';
 const fields=absence?[{key:'start',label:'First day absent',type:'date'},{key:'end',label:'Last day absent',type:'date'},{key:'reason',label:'Reason — sample information',type:'textarea'}]:[{key:'teacher',label:'Teacher',options:[c.adviser]},{key:'date',label:'Preferred date',type:'date'},{key:'time',label:'Preferred time',options:['9:00 AM','11:00 AM','2:00 PM']},{key:'topic',label:'Meeting topic — sample information',type:'textarea'}];
