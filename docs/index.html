@@ -791,10 +791,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:accession-register':'librarian-accession-register-2026-09-22-v1',
-'Librarian:budget-tracking':'librarian-budget-tracking-2026-09-22-v1',
-'Librarian:supplier-directory':'librarian-supplier-directory-2026-09-22-v1',
-'Librarian:year-end-stats':'librarian-year-end-stats-2026-09-22-v1'
+'Librarian:equipment':'librarian-equipment-2026-09-22-v1',
+'Librarian:audit-trail':'librarian-audit-trail-2026-09-22-v1',
+'Librarian:access-permissions':'librarian-access-permissions-2026-09-22-v1',
+'Librarian:interlibrary-loan':'librarian-interlibrary-loan-2026-09-22-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -830,10 +830,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Accession Register')return 'Librarian:accession-register';
-if(role==='Librarian'&&label==='Budget & Acquisition Tracking')return 'Librarian:budget-tracking';
-if(role==='Librarian'&&label==='Publisher / Supplier Directory')return 'Librarian:supplier-directory';
-if(role==='Librarian'&&label==='Year-End Statistics Dashboard')return 'Librarian:year-end-stats';
+if(role==='Librarian'&&label==='Library Equipment Tracking')return 'Librarian:equipment';
+if(role==='Librarian'&&label==='Library Audit Trail')return 'Librarian:audit-trail';
+if(role==='Librarian'&&label==='User Access & Permissions')return 'Librarian:access-permissions';
+if(role==='Librarian'&&label==='Inter-Library Loan')return 'Librarian:interlibrary-loan';
 return null;
 };
 function featureUnseen(id){
@@ -870,9 +870,10 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Catalog & Collection'&&featureUnseen('Librarian:accession-register'))unseen=true;
-  if(label==='Acquisitions'&&(featureUnseen('Librarian:budget-tracking')||featureUnseen('Librarian:supplier-directory')))unseen=true;
-  if(label==='Reports'&&featureUnseen('Librarian:year-end-stats'))unseen=true;
+  if(label==='Inventory'&&featureUnseen('Librarian:equipment'))unseen=true;
+  if(label==='Reports'&&featureUnseen('Librarian:audit-trail'))unseen=true;
+  if(label==='Library Dashboard'&&featureUnseen('Librarian:access-permissions'))unseen=true;
+  if(label==='Circulation'&&featureUnseen('Librarian:interlibrary-loan'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2880,14 +2881,14 @@ libraryView=function(view){
 
 /* Librarian main menu + submenu organization */
 const librarianGroups={
-  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications'],
+  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications','User Access & Permissions'],
   'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books','Accession Register'],
-  'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement'],
+  'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement','Inter-Library Loan'],
   'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
-  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review'],
+  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review','Library Equipment Tracking'],
   'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar','Library Feedback & Suggestions'],
   'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests','Budget & Acquisition Tracking','Publisher / Supplier Directory'],
-  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard']
+  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library Audit Trail']
 };
 menus.Librarian=Object.keys(librarianGroups);
 
@@ -3546,6 +3547,198 @@ libraryView=function(view){
       ]
     ));
     r.append(action('PRINT / SAVE YEAR-END SUMMARY',()=>window.print(),'outline'));
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian equipment, audit, permissions, and inter-library loan pack */
+if(!Array.isArray(libraryState.equipment))libraryState.equipment=[
+  {id:'EQ-001',name:'Barcode Scanner',type:'Scanner',location:'Circulation Desk',condition:'Good',status:'Available'},
+  {id:'EQ-002',name:'Library PC 01',type:'Computer',location:'Reading Area',condition:'Good',status:'In Use'},
+  {id:'EQ-003',name:'Receipt Printer',type:'Printer',location:'Circulation Desk',condition:'Needs Service',status:'Maintenance'}
+];
+if(!Array.isArray(libraryState.auditTrail))libraryState.auditTrail=[
+  {id:'AUD-001',date:'2026-09-22',time:'08:15',actor:'Librarian Demo',action:'Opened Library Dashboard',module:'Library Dashboard'}
+];
+if(!Array.isArray(libraryState.accessUsers))libraryState.accessUsers=[
+  {id:'USR-001',name:'Head Librarian',role:'Librarian',catalog:true,circulation:true,fines:true,inventory:true,reports:true,settings:true,status:'Active'},
+  {id:'USR-002',name:'Assistant Librarian',role:'Assistant Librarian',catalog:true,circulation:true,fines:false,inventory:true,reports:true,settings:false,status:'Active'}
+];
+if(!Array.isArray(libraryState.interlibraryLoans))libraryState.interlibraryLoans=[
+  {id:'ILL-001',direction:'Borrowed In',partner:'Cavite Learning Resource Center',title:'Advanced Biology Reference',borrower:'Science Department',requestDate:'2026-09-18',dueDate:'2026-10-02',status:'On Loan'}
+];
+function libraryAudit(actionName,moduleName){
+  const now=new Date();
+  const time=now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Manila'});
+  libraryState.auditTrail.unshift({
+    id:'AUD-'+Date.now().toString().slice(-6),date:staffDate(),time,
+    actor:'Librarian Demo',action:actionName,module:moduleName||currentModule||'Library'
+  });
+  if(libraryState.auditTrail.length>200)libraryState.auditTrail.length=200;
+  librarySave();
+}
+librarySave();
+
+const libraryViewOpsAdminBase=libraryView;
+libraryView=function(view){
+  const special=['Library Equipment Tracking','Library Audit Trail','User Access & Permissions','Inter-Library Loan'];
+  if(!special.includes(view))return libraryViewOpsAdminBase(view);
+  featureOpened(view);
+  currentModule=view;
+  libraryAudit('Opened '+view,view);
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Library Equipment Tracking'){
+    r.append(card('LIBRARY EQUIPMENT TRACKING',[
+      libraryState.equipment.length+' equipment record(s)',
+      'Track computers, scanners, printers, tablets, and other library equipment.'
+    ]));
+    r.append(form([
+      {key:'name',label:'Equipment name'},
+      {key:'type',label:'Type',options:['Computer','Scanner','Printer','Tablet','Projector','Router','Other']},
+      {key:'location',label:'Location'},
+      {key:'condition',label:'Condition',options:['Good','Fair','Needs Service','Damaged']},
+      {key:'status',label:'Status',options:['Available','In Use','Maintenance','Retired']}
+    ],'ADD EQUIPMENT',v=>{
+      libraryState.equipment.unshift({id:'EQ-'+Date.now().toString().slice(-6),...v});
+      libraryAudit('Added equipment: '+v.name,'Library Equipment Tracking');
+      librarySave('Equipment record added.');
+      libraryView(view);
+    }));
+    libraryState.equipment.forEach(x=>{
+      const box=card(x.id+' · '+x.name,[
+        'Type · '+x.type,
+        'Location · '+x.location,
+        'Condition · '+x.condition,
+        'Status · '+x.status
+      ]);
+      if(x.status!=='Maintenance'&&x.status!=='Retired')box.append(action('SEND TO MAINTENANCE',()=>{
+        x.status='Maintenance';x.condition='Needs Service';
+        libraryAudit('Sent '+x.name+' to maintenance','Library Equipment Tracking');
+        librarySave('Equipment moved to maintenance.');
+        libraryView(view);
+      },'outline'));
+      if(x.status==='Maintenance')box.append(action('RETURN TO SERVICE',()=>{
+        x.status='Available';x.condition='Good';
+        libraryAudit('Returned '+x.name+' to service','Library Equipment Tracking');
+        librarySave('Equipment returned to service.');
+        libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Library Audit Trail'){
+    r.append(card('LIBRARY AUDIT TRAIL',[
+      libraryState.auditTrail.length+' recent activity record(s)',
+      'Demo log of important Librarian actions stored in this browser.'
+    ]));
+    r.append(table(
+      ['Date','Time','User','Module','Action'],
+      libraryState.auditTrail.slice(0,100).map(x=>[x.date,x.time,x.actor,x.module,x.action])
+    ));
+    r.append(action('EXPORT AUDIT CSV',()=>{
+      const rows=[['Date','Time','User','Module','Action'],...libraryState.auditTrail.map(x=>[x.date,x.time,x.actor,x.module,x.action])];
+      const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='library-audit-trail.csv';a.click();URL.revokeObjectURL(a.href);
+      libraryAudit('Exported audit trail CSV','Library Audit Trail');
+    },'outline'));
+  }
+
+  if(view==='User Access & Permissions'){
+    r.append(card('USER ACCESS & PERMISSIONS',[
+      libraryState.accessUsers.filter(x=>x.status==='Active').length+' active library user account(s)',
+      'Demo permission controls only; they do not create real login accounts.'
+    ]));
+    r.append(form([
+      {key:'name',label:'User name'},
+      {key:'role',label:'Role',options:['Librarian','Assistant Librarian','Library Encoder','Read Only']}
+    ],'ADD DEMO USER',v=>{
+      const full=v.role==='Librarian';
+      libraryState.accessUsers.unshift({
+        id:'USR-'+Date.now().toString().slice(-6),name:v.name,role:v.role,
+        catalog:true,circulation:v.role!=='Read Only',fines:full,inventory:v.role!=='Read Only',
+        reports:true,settings:full,status:'Active'
+      });
+      libraryAudit('Added demo access user: '+v.name,'User Access & Permissions');
+      librarySave('Demo access user added.');
+      libraryView(view);
+    }));
+    libraryState.accessUsers.forEach(u=>{
+      const box=card(u.name+' · '+u.role,[
+        'Status · '+u.status,
+        'Catalog · '+(u.catalog?'Allowed':'No access'),
+        'Circulation · '+(u.circulation?'Allowed':'No access'),
+        'Fines · '+(u.fines?'Allowed':'No access'),
+        'Inventory · '+(u.inventory?'Allowed':'No access'),
+        'Reports · '+(u.reports?'Allowed':'No access'),
+        'Settings · '+(u.settings?'Allowed':'No access')
+      ]);
+      if(u.role!=='Librarian'){
+        box.append(
+          action(u.circulation?'REMOVE CIRCULATION':'ALLOW CIRCULATION',()=>{
+            u.circulation=!u.circulation;
+            libraryAudit('Changed circulation permission for '+u.name,'User Access & Permissions');
+            librarySave('Permission updated.');libraryView(view);
+          },'outline'),
+          action(u.inventory?'REMOVE INVENTORY':'ALLOW INVENTORY',()=>{
+            u.inventory=!u.inventory;
+            libraryAudit('Changed inventory permission for '+u.name,'User Access & Permissions');
+            librarySave('Permission updated.');libraryView(view);
+          },'outline'),
+          action(u.status==='Active'?'DISABLE USER':'ENABLE USER',()=>{
+            u.status=u.status==='Active'?'Disabled':'Active';
+            libraryAudit(u.status+' demo user '+u.name,'User Access & Permissions');
+            librarySave('User status updated.');libraryView(view);
+          },'primary')
+        );
+      }
+      r.append(box);
+    });
+  }
+
+  if(view==='Inter-Library Loan'){
+    const active=libraryState.interlibraryLoans.filter(x=>!['Returned','Completed','Cancelled'].includes(x.status)).length;
+    r.append(card('INTER-LIBRARY LOAN',[
+      active+' active external loan(s)',
+      'Track books borrowed from or lent to another library or learning resource center.'
+    ]));
+    r.append(form([
+      {key:'direction',label:'Transaction',options:['Borrowed In','Lent Out']},
+      {key:'partner',label:'Partner library / institution'},
+      {key:'title',label:'Book / resource title'},
+      {key:'borrower',label:'Internal borrower / department'},
+      {key:'requestDate',label:'Request date',type:'date'},
+      {key:'dueDate',label:'Due / return date',type:'date'}
+    ],'CREATE INTER-LIBRARY LOAN',v=>{
+      libraryState.interlibraryLoans.unshift({
+        id:'ILL-'+Date.now().toString().slice(-6),...v,status:'Requested'
+      });
+      libraryAudit('Created inter-library loan for '+v.title,'Inter-Library Loan');
+      librarySave('Inter-library loan request created.');
+      libraryView(view);
+    }));
+    libraryState.interlibraryLoans.forEach(x=>{
+      const box=card(x.id+' · '+x.title,[
+        'Direction · '+x.direction,
+        'Partner · '+x.partner,
+        'For · '+x.borrower,
+        'Request · '+x.requestDate,
+        'Due · '+x.dueDate,
+        'Status · '+x.status
+      ]);
+      if(x.status==='Requested')box.append(action('MARK ON LOAN',()=>{
+        x.status='On Loan';libraryAudit('Marked '+x.id+' on loan','Inter-Library Loan');
+        librarySave('Inter-library loan activated.');libraryView(view);
+      },'primary'));
+      else if(x.status==='On Loan')box.append(action('MARK RETURNED',()=>{
+        x.status='Returned';libraryAudit('Returned '+x.id,'Inter-Library Loan');
+        librarySave('Inter-library loan returned.');libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
   }
   syncFeatureHighlights();
 };
