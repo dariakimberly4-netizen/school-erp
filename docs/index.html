@@ -752,10 +752,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:holds':'librarian-holds-2026-09-21-v2',
-'Librarian:lost-damaged':'librarian-lost-damaged-2026-09-21-v2',
-'Librarian:acquisitions':'librarian-acquisitions-2026-09-21-v2',
-'Librarian:reports-export':'librarian-reports-export-2026-09-21-v2'
+'Librarian:borrower-history':'librarian-borrower-history-2026-09-21-v1',
+'Librarian:new-arrivals':'librarian-new-arrivals-2026-09-21-v1',
+'Librarian:shelf-finder':'librarian-shelf-finder-2026-09-21-v1',
+'Librarian:card-verify':'librarian-card-verify-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -791,10 +791,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Reservations / Hold Queue')return 'Librarian:holds';
-if(role==='Librarian'&&label==='Damaged / Lost Book Reports')return 'Librarian:lost-damaged';
-if(role==='Librarian'&&label==='Acquisition Requests')return 'Librarian:acquisitions';
-if(role==='Librarian'&&label==='Reports & Export Center')return 'Librarian:reports-export';
+if(role==='Librarian'&&label==='Borrower History')return 'Librarian:borrower-history';
+if(role==='Librarian'&&label==='New Arrivals')return 'Librarian:new-arrivals';
+if(role==='Librarian'&&label==='Shelf Location Finder')return 'Librarian:shelf-finder';
+if(role==='Librarian'&&label==='Library Card / QR Verification')return 'Librarian:card-verify';
 return null;
 };
 function featureUnseen(id){
@@ -2398,6 +2398,136 @@ libraryView=function(view){
       action('PRINT / SAVE CURRENT REPORT',()=>window.print(),'item')
     );
     r.append(actions);
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian discovery and verification pack */
+for(const label of ['Borrower History','New Arrivals','Shelf Location Finder','Library Card / QR Verification']){
+  if(!menus.Librarian.includes(label))menus.Librarian.push(label);
+}
+if(!libraryState.books.some(b=>b.addedDate)) {
+  libraryState.books.forEach((b,i)=>b.addedDate=['2026-09-20','2026-09-18','2026-09-15','2026-09-10','2026-09-05'][i]||'2026-09-01');
+}
+librarySave();
+
+const libraryViewDiscoveryBase=libraryView;
+libraryView=function(view){
+  const special=['Borrower History','New Arrivals','Shelf Location Finder','Library Card / QR Verification'];
+  if(!special.includes(view))return libraryViewDiscoveryBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Borrower History'){
+    r.append(card('BORROWER HISTORY',[
+      'Search a student or staff member and review current and past library transactions.',
+      'Demo borrower records only.'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','Borrower name or ID');
+    const input=el('input');input.placeholder='Example: Alex Santos or STU-2026-001';
+    const results=el('div');
+    lab.append(input);
+    wrap.append(lab,action('SEARCH HISTORY',()=>{
+      const q=input.value.trim().toLowerCase();
+      results.replaceChildren();
+      if(!q){results.append(el('p','Enter a borrower name or ID.','hint'));return}
+      const rows=libraryState.loans.filter(l=>(l.borrower+' '+l.borrowerId).toLowerCase().includes(q));
+      if(!rows.length){results.append(card('NO BORROWER HISTORY',['No matching demo library transactions found.']));return}
+      const borrower=rows[0].borrower, active=rows.filter(l=>!l.returned), returned=rows.filter(l=>l.returned);
+      results.append(card(borrower+' · '+rows[0].borrowerId,[
+        'Total transactions · '+rows.length,
+        'Active loans · '+active.length,
+        'Returned books · '+returned.length,
+        'Outstanding fines · ₱'+rows.reduce((n,l)=>n+Number(l.fine||0),0).toFixed(2)
+      ]));
+      results.append(table(['Loan','Book','Borrowed','Due','Returned','Status'],
+        rows.map(l=>[l.id,l.title,l.borrowed,l.due,l.returned||'—',l.returned?'Returned':(l.due<staffDate()?'Overdue':'On Loan')])
+      ));
+    },'primary'));
+    r.append(wrap,results);
+  }
+
+  if(view==='New Arrivals'){
+    const arrivals=[...libraryState.books].sort((a,b)=>String(b.addedDate||'').localeCompare(String(a.addedDate||'')));
+    r.append(card('NEW ARRIVALS',[
+      arrivals.length+' recent catalog title(s)',
+      'Newest books appear first with shelf and availability information.'
+    ]));
+    arrivals.forEach(b=>{
+      const box=card(b.title,[
+        b.author+' · '+b.category,
+        'Added · '+(b.addedDate||'Not recorded'),
+        'Call No. · '+b.callNo,
+        'Shelf · '+b.shelf,
+        'Available · '+b.available+' / '+b.copies
+      ]);
+      box.append(action('OPEN CATALOG',()=>libraryView('Book Catalog'),'outline'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Shelf Location Finder'){
+    r.append(card('SHELF LOCATION FINDER',[
+      'Find the exact shelf and call number for any catalog title.'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','Search title, author, category, or call number');
+    const input=el('input');input.type='search';input.placeholder='Example: Science Explorer';
+    const results=el('div');
+    const draw=()=>{
+      const q=input.value.trim().toLowerCase();
+      results.replaceChildren();
+      if(!q){results.append(el('p','Start typing to locate a book.','hint'));return}
+      const books=libraryState.books.filter(b=>(b.title+' '+b.author+' '+b.category+' '+b.callNo).toLowerCase().includes(q));
+      if(!books.length){results.append(card('NO MATCH',['No catalog title matches this search.']));return}
+      books.forEach(b=>{
+        results.append(card(b.title,[
+          'Shelf · '+b.shelf,
+          'Call No. · '+b.callNo,
+          'Category · '+b.category,
+          'Availability · '+b.available+' / '+b.copies,
+          'Status · '+b.status
+        ]));
+      });
+    };
+    input.oninput=draw;lab.append(input);wrap.append(lab);r.append(wrap,results);
+  }
+
+  if(view==='Library Card / QR Verification'){
+    r.append(card('LIBRARY CARD / QR VERIFICATION',[
+      'Verify a borrower before issuing books.',
+      'This demo accepts the sample borrower IDs already present in library transactions.',
+      'No camera or real QR credential is used.'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','Enter or scan demo borrower ID');
+    const input=el('input');input.placeholder='Example: STU-2026-001';
+    const result=el('div');
+    lab.append(input);
+    wrap.append(lab,action('VERIFY BORROWER',()=>{
+      const id=input.value.trim().toLowerCase();
+      result.replaceChildren();
+      if(!id){result.append(el('p','Enter a borrower ID.','hint'));return}
+      const rows=libraryState.loans.filter(l=>String(l.borrowerId).toLowerCase()===id);
+      if(!rows.length){result.append(card('NOT VERIFIED',['No matching demo library borrower was found.']));return}
+      const name=rows[0].borrower;
+      const active=rows.filter(l=>!l.returned);
+      const overdue=active.filter(l=>l.due<staffDate());
+      const fine=rows.reduce((n,l)=>n+Number(l.fine||0),0);
+      const allowed=overdue.length===0&&fine<=0;
+      result.append(card(allowed?'VERIFIED · BORROWING ALLOWED':'VERIFIED · REVIEW REQUIRED',[
+        name+' · '+rows[0].borrowerId,
+        'Active loans · '+active.length,
+        'Overdue books · '+overdue.length,
+        'Outstanding fines · ₱'+fine.toFixed(2),
+        allowed?'Borrower may proceed in this demo.':'Resolve overdue items or fines before issuing another book.'
+      ]));
+      result.append(action('OPEN BORROW / RETURN',()=>libraryView('Borrow / Return'),'outline'));
+    },'primary'));
+    r.append(wrap,result);
   }
   syncFeatureHighlights();
 };
