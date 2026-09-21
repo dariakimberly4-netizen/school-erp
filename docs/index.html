@@ -797,7 +797,9 @@ if(role==='Librarian'&&label==='Acquisition Requests')return 'Librarian:acquisit
 if(role==='Librarian'&&label==='Reports & Export Center')return 'Librarian:reports-export';
 return null;
 };
-function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
+function featureUnseen(id){
+return !!(id&&Object.prototype.hasOwnProperty.call(FEATURE_RELEASES,id)&&seenFeatures[id]!==FEATURE_RELEASES[id]);
+}
 function featureOpened(label){
 const id=featureId(activeRole,label);
 if(!featureUnseen(id))return;
