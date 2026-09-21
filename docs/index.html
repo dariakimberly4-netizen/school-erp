@@ -654,7 +654,11 @@ const FEATURE_RELEASES={
 'Staff:global-search':'staff-global-search-2026-09-21-v1',
 'Staff:document-expiry':'staff-document-expiry-2026-09-21-v1',
 'Staff:performance':'staff-performance-evaluation-2026-09-21-v1',
-'Staff:audit-trail':'staff-audit-trail-2026-09-21-v1'
+'Staff:audit-trail':'staff-audit-trail-2026-09-21-v1',
+'Staff:notification-settings':'staff-notification-settings-2026-09-21-v1',
+'Staff:leave-calendar':'staff-leave-calendar-2026-09-21-v1',
+'Staff:department-dashboard':'staff-department-dashboard-2026-09-21-v1',
+'Staff:onboarding':'staff-onboarding-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -676,6 +680,10 @@ if(role==='Staff'&&label==='Global Search')return 'Staff:global-search';
 if(role==='Staff'&&label==='Document Expiry Alerts')return 'Staff:document-expiry';
 if(role==='Staff'&&label==='Performance & Evaluation')return 'Staff:performance';
 if(role==='Staff'&&label==='Audit Trail')return 'Staff:audit-trail';
+if(role==='Staff'&&label==='Notification Settings')return 'Staff:notification-settings';
+if(role==='Staff'&&label==='My Leave Calendar')return 'Staff:leave-calendar';
+if(role==='Staff'&&label==='Department Dashboard')return 'Staff:department-dashboard';
+if(role==='Staff'&&label==='Staff Onboarding')return 'Staff:onboarding';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -700,6 +708,10 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Documents'&&featureUnseen('Staff:document-expiry'))unseen=true;
   if(label==='My Profile & Help'&&featureUnseen('Staff:performance'))unseen=true;
   if(label==='Reports'&&featureUnseen('Staff:audit-trail'))unseen=true;
+  if(label==='My Profile & Help'&&featureUnseen('Staff:notification-settings'))unseen=true;
+  if(label==='Leave & Requests'&&featureUnseen('Staff:leave-calendar'))unseen=true;
+  if(label==='Dashboard'&&featureUnseen('Staff:department-dashboard'))unseen=true;
+  if(label==='Training & Seminars'&&featureUnseen('Staff:onboarding'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -1532,6 +1544,172 @@ if(view==='Audit Trail'){
   else r.append(table(['Date / Time','Actor','Action','Source'],
     events.slice(0,100).map(e=>[staffTime(e.date),e.actor,e.action,e.source])
   ));
+}
+syncFeatureHighlights();
+};
+
+
+/* Staff completion pack: notification settings, leave calendar, department dashboard, onboarding */
+if(!staff.notificationPreferences || typeof staff.notificationPreferences!=='object'){
+  staff.notificationPreferences={tasks:true,approvals:true,schedule:true,announcements:true,workOrders:true,helpDesk:true};
+}
+if(!Array.isArray(staff.onboardingChecklist))staff.onboardingChecklist=[
+  {id:'OB-1',label:'Review school policies and staff handbook',done:true},
+  {id:'OB-2',label:'Complete staff profile and emergency contact',done:true},
+  {id:'OB-3',label:'Submit required employment documents',done:true},
+  {id:'OB-4',label:'Complete Data Privacy orientation',done:true},
+  {id:'OB-5',label:'Complete Basic Safety Orientation',done:true},
+  {id:'OB-6',label:'Review emergency assignment',done:false},
+  {id:'OB-7',label:'Confirm issued equipment',done:false},
+  {id:'OB-8',label:'Meet immediate supervisor / department lead',done:false}
+];
+
+if(!staffMenus.Dashboard.includes('Department Dashboard'))staffMenus.Dashboard.push('Department Dashboard');
+if(!staffMenus['Leave & Requests'].includes('My Leave Calendar'))staffMenus['Leave & Requests'].push('My Leave Calendar');
+if(!staffMenus['My Profile & Help'].includes('Notification Settings'))staffMenus['My Profile & Help'].push('Notification Settings');
+if(!staffMenus['Training & Seminars'].includes('Staff Onboarding'))staffMenus['Training & Seminars'].push('Staff Onboarding');
+menus.Staff=Object.keys(staffMenus);
+
+const staffViewBeforeCompletionPack2=staffView;
+staffView=function(view){
+if(!['Notification Settings','My Leave Calendar','Department Dashboard','Staff Onboarding'].includes(view))return staffViewBeforeCompletionPack2(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff workspace · Demo');
+$('module-back').hidden=false;
+
+if(view==='Notification Settings'){
+  r.append(card('NOTIFICATION SETTINGS',[
+    'Choose which Staff alerts appear in your workspace.',
+    'Settings are saved in this browser for the demo.'
+  ]));
+  const labels={
+    tasks:'Tasks & deadlines',
+    approvals:'Request approvals & status changes',
+    schedule:'Schedule & duty reminders',
+    announcements:'Announcements & acknowledgements',
+    workOrders:'Work orders & maintenance updates',
+    helpDesk:'Help desk replies & ticket updates'
+  };
+  const formBox=el('div',undefined,'parent-form');
+  Object.keys(labels).forEach(key=>{
+    const row=el('label');
+    const input=el('input');
+    input.type='checkbox';
+    input.checked=staff.notificationPreferences[key]!==false;
+    input.style.width='22px';input.style.height='22px';
+    input.onchange=()=>{
+      staff.notificationPreferences[key]=input.checked;
+      staffSave('Notification setting changed: '+labels[key]+' '+(input.checked?'on':'off'));
+      feedback(labels[key]+' notifications '+(input.checked?'enabled.':'disabled.'));
+    };
+    row.style.display='flex';row.style.gridTemplateColumns='auto 1fr';row.style.alignItems='center';row.style.gap='12px';
+    row.append(input,el('span',labels[key]));
+    formBox.append(row);
+  });
+  r.append(formBox);
+  r.append(card('DELIVERY NOTE',[
+    'Demo settings control preferences only.',
+    'A live system can connect these preferences to in-app, email, SMS, or push notifications subject to school policy.'
+  ]));
+}
+
+if(view==='My Leave Calendar'){
+  const leaves=staff.requests.filter(q=>q.type==='Leave'&&q.start&&q.end).sort((a,b)=>a.start.localeCompare(b.start));
+  const today=staffDate();
+  const year=today.slice(0,4);
+  r.append(card('MY LEAVE CALENDAR · '+year,[
+    leaves.filter(q=>q.status==='Approved').length+' approved leave request(s)',
+    leaves.filter(q=>q.status==='Pending').length+' pending leave request(s)',
+    'Approved and pending leave are shown below by date.'
+  ]));
+  if(!leaves.length)r.append(el('p','No leave requests yet.','hint'));
+  leaves.forEach(q=>{
+    const box=card((q.category||'Leave')+' · '+q.status,[
+      q.start===q.end?q.start:q.start+' → '+q.end,
+      'Working days · '+leaveDays(q),
+      q.details||'No reason entered.',
+      q.remark?('Administrator remark · '+q.remark):''
+    ].filter(Boolean));
+    r.append(box);
+  });
+  r.append(action('APPLY FOR LEAVE',()=>staffView('Apply for Leave'),'primary'));
+  r.append(action('VIEW LEAVE BALANCES',()=>staffView('Leave Balances'),'outline'));
+}
+
+if(view==='Department Dashboard'){
+  const openTasks=staff.tasks.filter(t=>t.status!=='Completed');
+  const openWO=(staff.workOrders||[]).filter(w=>w.status!=='Completed');
+  const pending=staff.requests.filter(q=>q.status==='Pending');
+  r.append(card('DEPARTMENT DASHBOARD',[
+    'Department · '+staff.profile.department,
+    'Open staff tasks · '+openTasks.length,
+    'Active work orders · '+openWO.length,
+    'Pending requests · '+pending.length,
+    'Staff availability · 4 available · 1 assigned off-site · SAMPLE'
+  ]));
+  const grid=el('div',undefined,'today-grid');
+  const tasks=card('TEAM PRIORITIES',[
+    'Prepare parent meeting room · High priority',
+    'Check classroom supplies · In progress',
+    'Weekly inventory follow-up · Due this week'
+  ]);
+  tasks.append(action('OPEN MY TASKS',()=>staffView('My Tasks'),'outline'));
+  grid.append(tasks);
+
+  const duties=card('SHARED DUTIES',[
+    'Main Gate · 7:30–8:15 AM',
+    'Lunch Supervision · 11:30 AM–12:30 PM',
+    'Parent Meeting Support · Sep 28'
+  ]);
+  duties.append(action('OPEN DUTY ROSTER',()=>staffView('Duty Roster'),'outline'));
+  grid.append(duties);
+
+  const wo=card('DEPARTMENT WORK ORDERS',[
+    openWO.length+' active',
+    openWO[0]?openWO[0].title+' · '+openWO[0].priority+' priority':'No active work orders'
+  ]);
+  wo.append(action('OPEN WORK ORDER BOARD',()=>staffView('Work Order Board'),'outline'));
+  grid.append(wo);
+
+  const people=card('TEAM AVAILABILITY',[
+    'Sam Reyes · Available',
+    'Maria Santos · Available',
+    'Leo Mendoza · Assigned · Facilities inspection',
+    'Mia Flores · Available',
+    'Ana Cruz · Available'
+  ]);
+  people.append(action('OPEN STAFF DIRECTORY',()=>staffView('Staff Directory'),'outline'));
+  grid.append(people);
+
+  r.append(grid);
+}
+
+if(view==='Staff Onboarding'){
+  const done=staff.onboardingChecklist.filter(x=>x.done).length;
+  const total=staff.onboardingChecklist.length;
+  r.append(card('STAFF ONBOARDING',[
+    done+' of '+total+' steps completed',
+    Math.round(done/total*100)+'% complete',
+    'Use this checklist for orientation, documents, training, equipment, and first-day setup.'
+  ]));
+  staff.onboardingChecklist.forEach(item=>{
+    const box=card(item.done?'COMPLETED':'PENDING',[item.label]);
+    if(!item.done)box.append(action('MARK COMPLETE',()=>{
+      item.done=true;
+      staffDone('Staff Onboarding','Onboarding step completed: '+item.label);
+    },'primary'));
+    else box.append(el('p','✓ Completed','status'));
+    r.append(box);
+  });
+  r.append(card('ONBOARDING SHORTCUTS',[
+    'Required documents · My Documents',
+    'Required training · Training Dashboard',
+    'Emergency role · Emergency Center',
+    'Issued equipment · Equipment Accountability'
+  ]));
+  r.append(action('OPEN MY DOCUMENTS',()=>openModule('My Documents'),'outline'));
+  r.append(action('OPEN TRAINING DASHBOARD',()=>staffView('Training Dashboard'),'outline'));
+  r.append(action('OPEN EMERGENCY CENTER',()=>staffView('Emergency Center'),'outline'));
 }
 syncFeatureHighlights();
 };
