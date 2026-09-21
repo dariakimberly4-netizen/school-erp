@@ -495,18 +495,7 @@ let seenFeatures={};
 try{const saved=JSON.parse(localStorage.getItem(FEATURE_SEEN_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))seenFeatures=saved}catch(e){}
 const openedNewFeatures=new Set();
 const featureId=(role,label)=>{
-if(role==='Staff'){
-if(['Training & Seminars','Training Dashboard','My Trainings','Certificates'].includes(label))return 'Staff:training';
-if(['Dashboard','Today’s Overview','Activity History','My Schedule','Today’s Schedule','Duty Roster','Payroll','Payroll Summary','Payslip History','Overtime & Time Adjustments','Overtime Request','Undertime Request','Time Adjustment Status','My Documents','Document Center','Certificates & Memos','Tasks','My Tasks','Completed Tasks','Attendance','Time In / Out','Attendance Records','Correction Request','Calendar','School Events','Duty Schedule','Announcements','School Notices','Messages','Inbox','School Contacts','Leave & Requests','Apply for Leave','Supply Request','Request Tracker','My Profile & Help','My Profile','Quick Tour','Support Request'].includes(label))return 'Staff:sample-complete';
-
-if(['Attendance','Monthly Report','Correction Request'].includes(label))return 'Staff:attendance-reports';
-if(['Leave & Requests','Leave Balances','Apply for Leave'].includes(label))return 'Staff:leave-balances';
-if(['My Schedule','Today’s Schedule','Duty Roster'].includes(label))return 'Staff:my-schedule';
-if(['Payroll','Payroll Summary','Payslip History'].includes(label))return 'Staff:payroll';
-if(['Overtime & Time Adjustments','Overtime Request','Undertime Request','Time Adjustment Status'].includes(label))return 'Staff:time-adjustments';
-if(['My Documents','Document Center','Certificates & Memos'].includes(label))return 'Staff:documents';
-}
-if(role==='Administrator'&&['Staff Operations','Open Staff Operations','Staff Requests'].includes(label))return 'Administrator:staff-operations';
+if(role==='Staff'&&['Training & Seminars','Training Dashboard','My Trainings','Certificates'].includes(label))return 'Staff:training';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASE}
@@ -522,7 +511,7 @@ if(featureUnseen(id)){b.classList.add('new-feature');b.append(el('span','NEW','n
 }
 const banner=$('new-feature-banner');
 if(activeRole==='Staff'||activeRole==='Administrator'){
-const pending=Object.keys(activeRole==='Staff'?{'Staff:training':1}:{'Administrator:staff-operations':1}).some(featureUnseen);
+const pending=activeRole==='Staff'&&featureUnseen('Staff:training');
 banner.classList.toggle('features-unseen',pending);
 const title=banner.querySelector('strong');const titleText=activeRole==='Staff'?'CONNECTED STAFF WORKFLOWS':'STAFF OPERATIONS';if(title&&title.textContent!==(pending?'NEW · ':'')+titleText)title.textContent=(pending?'NEW · ':'')+titleText;
 }else{banner.hidden=true;banner.classList.remove('features-unseen')}
