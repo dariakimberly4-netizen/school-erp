@@ -773,10 +773,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:borrower-history':'librarian-borrower-history-2026-09-21-v1',
-'Librarian:new-arrivals':'librarian-new-arrivals-2026-09-21-v1',
-'Librarian:shelf-finder':'librarian-shelf-finder-2026-09-21-v1',
-'Librarian:card-verify':'librarian-card-verify-2026-09-21-v1'
+'Librarian:digital-resources':'librarian-digital-resources-2026-09-21-v1',
+'Librarian:announcements':'librarian-announcements-2026-09-21-v1',
+'Librarian:popular-books':'librarian-popular-books-2026-09-21-v1',
+'Librarian:visit-log':'librarian-visit-log-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -812,10 +812,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Borrower History')return 'Librarian:borrower-history';
-if(role==='Librarian'&&label==='New Arrivals')return 'Librarian:new-arrivals';
-if(role==='Librarian'&&label==='Shelf Location Finder')return 'Librarian:shelf-finder';
-if(role==='Librarian'&&label==='Library Card / QR Verification')return 'Librarian:card-verify';
+if(role==='Librarian'&&label==='Digital Resources')return 'Librarian:digital-resources';
+if(role==='Librarian'&&label==='Library Announcements')return 'Librarian:announcements';
+if(role==='Librarian'&&label==='Popular Books / Most Borrowed')return 'Librarian:popular-books';
+if(role==='Librarian'&&label==='Library Visit Log')return 'Librarian:visit-log';
 return null;
 };
 function featureUnseen(id){
@@ -2549,6 +2549,137 @@ libraryView=function(view){
       result.append(action('OPEN BORROW / RETURN',()=>libraryView('Borrow / Return'),'outline'));
     },'primary'));
     r.append(wrap,result);
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian engagement pack */
+for(const label of ['Digital Resources','Library Announcements','Popular Books / Most Borrowed','Library Visit Log']){
+  if(!menus.Librarian.includes(label))menus.Librarian.push(label);
+}
+if(!Array.isArray(libraryState.digitalResources))libraryState.digitalResources=[
+  {id:'RES-001',title:'DepEd Commons',type:'Learning Portal',audience:'Students & Teachers',status:'Available',note:'Approved demo reference link placeholder.'},
+  {id:'RES-002',title:'Open Educational Resources',type:'E-book / OER',audience:'All',status:'Available',note:'Use school-approved resource links in production.'},
+  {id:'RES-003',title:'Research Journal Directory',type:'Research',audience:'Teachers & Older Students',status:'Available',note:'Demo listing only.'}
+];
+if(!Array.isArray(libraryState.announcements))libraryState.announcements=[
+  {id:'LIB-ANN-001',title:'New books available',date:'2026-09-21',audience:'All',status:'Published',message:'New reading and reference titles are now available in the library.'},
+  {id:'LIB-ANN-002',title:'Library quiet study hours',date:'2026-09-22',audience:'Students',status:'Draft',message:'Quiet study hours will be observed during the afternoon period.'}
+];
+if(!Array.isArray(libraryState.visits))libraryState.visits=[
+  {id:'VIS-001',date:'2026-09-21',time:'08:15',visitor:'Alex Santos',visitorId:'STU-2026-001',purpose:'Borrow / Return'},
+  {id:'VIS-002',date:'2026-09-21',time:'09:05',visitor:'Mika Reyes',visitorId:'STU-2026-022',purpose:'Reading / Study'},
+  {id:'VIS-003',date:'2026-09-21',time:'10:20',visitor:'Maria Santos',visitorId:'STAFF-DEMO-002',purpose:'Research'}
+];
+librarySave();
+
+const libraryViewEngagementBase=libraryView;
+libraryView=function(view){
+  const special=['Digital Resources','Library Announcements','Popular Books / Most Borrowed','Library Visit Log'];
+  if(!special.includes(view))return libraryViewEngagementBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Digital Resources'){
+    r.append(card('DIGITAL RESOURCES',[
+      libraryState.digitalResources.length+' approved demo resource(s)',
+      'Use this area for e-books, journals, research portals, and school-approved online learning materials.'
+    ]));
+    libraryState.digitalResources.forEach(x=>{
+      r.append(card(x.title,[
+        x.type+' · '+x.audience,
+        'Status · '+x.status,
+        x.note
+      ]));
+    });
+    r.append(form([
+      {key:'title',label:'Resource title'},
+      {key:'type',label:'Type',options:['E-book / OER','Research','Learning Portal','Journal','Reference']},
+      {key:'audience',label:'Audience',options:['All','Students','Teachers','Staff']},
+      {key:'note',label:'Notes / access instructions',type:'textarea'}
+    ],'ADD DEMO RESOURCE',v=>{
+      libraryState.digitalResources.unshift({
+        id:'RES-'+Date.now().toString().slice(-6),...v,status:'Available'
+      });
+      librarySave('Digital resource added.');
+      libraryView(view);
+    }));
+  }
+
+  if(view==='Library Announcements'){
+    r.append(card('LIBRARY ANNOUNCEMENTS',[
+      libraryState.announcements.filter(a=>a.status==='Published').length+' published',
+      libraryState.announcements.filter(a=>a.status==='Draft').length+' draft',
+      'Post library schedules, closures, new arrivals, reminders, and reading campaigns.'
+    ]));
+    r.append(form([
+      {key:'title',label:'Announcement title'},
+      {key:'date',label:'Date',type:'date'},
+      {key:'audience',label:'Audience',options:['All','Students','Teachers','Staff','Parents']},
+      {key:'message',label:'Announcement message',type:'textarea'}
+    ],'CREATE DRAFT',v=>{
+      libraryState.announcements.unshift({
+        id:'LIB-ANN-'+Date.now().toString().slice(-6),...v,status:'Draft'
+      });
+      librarySave('Library announcement draft created.');
+      libraryView(view);
+    }));
+    libraryState.announcements.forEach(a=>{
+      const box=card(a.title,[
+        a.date+' · '+a.audience,
+        'Status · '+a.status,
+        a.message
+      ]);
+      if(a.status==='Draft')box.append(action('PUBLISH',()=>{a.status='Published';librarySave('Announcement published.');libraryView(view)},'primary'));
+      if(a.status==='Published')box.append(action('UNPUBLISH',()=>{a.status='Draft';librarySave('Announcement moved back to draft.');libraryView(view)},'outline'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Popular Books / Most Borrowed'){
+    const counts={};
+    libraryState.loans.forEach(l=>{counts[l.bookId]=(counts[l.bookId]||0)+1});
+    const ranked=libraryState.books.map(b=>({...b,borrowCount:counts[b.id]||0}))
+      .sort((a,b)=>b.borrowCount-a.borrowCount||a.title.localeCompare(b.title));
+    r.append(card('POPULAR BOOKS / MOST BORROWED',[
+      'Ranking is based on demo loan transactions.',
+      'Use this to guide displays, acquisitions, and reading recommendations.'
+    ]));
+    r.append(table(['Rank','Title','Category','Times Borrowed','Available'],
+      ranked.map((b,i)=>[i+1,b.title,b.category,b.borrowCount,b.available+' / '+b.copies])
+    ));
+    const cats={};
+    libraryState.loans.forEach(l=>{const b=libraryBook(l.bookId);const k=b?.category||'Other';cats[k]=(cats[k]||0)+1});
+    r.append(card('BORROWING BY CATEGORY',
+      Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' · '+v+' loan(s)')
+    ));
+  }
+
+  if(view==='Library Visit Log'){
+    const today=staffDate();
+    r.append(card('LIBRARY VISIT LOG · '+today,[
+      libraryState.visits.filter(v=>v.date===today).length+' visitor(s) logged today',
+      'Track visitor name / ID and purpose of visit.'
+    ]));
+    r.append(form([
+      {key:'visitor',label:'Visitor name'},
+      {key:'visitorId',label:'Student / Staff ID'},
+      {key:'purpose',label:'Purpose',options:['Borrow / Return','Reading / Study','Research','Computer / Digital Resource','Library Clearance','Other']}
+    ],'LOG VISIT',v=>{
+      const now=new Date();
+      const time=now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Manila'});
+      libraryState.visits.unshift({
+        id:'VIS-'+Date.now().toString().slice(-6),date:staffDate(),time,...v
+      });
+      librarySave('Library visit logged.');
+      libraryView(view);
+    }));
+    const rows=[...libraryState.visits].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+    r.append(table(['Date','Time','Visitor','ID','Purpose'],
+      rows.map(v=>[v.date,v.time,v.visitor,v.visitorId,v.purpose])
+    ));
   }
   syncFeatureHighlights();
 };
