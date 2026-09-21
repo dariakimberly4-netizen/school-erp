@@ -128,6 +128,22 @@ input,select,textarea{font-size:16px!important;line-height:1.4}
   #orbit .staff-node small{font-size:8px}
 }
 
+
+/* LIBRARY HUB CENTER */
+.library-hub-center{cursor:pointer}
+.library-hub-center .center-count{
+  max-width:90%;
+  white-space:normal;
+  text-align:center;
+  line-height:1.2;
+  font-size:11px!important;
+}
+@media(max-width:650px){
+  .library-hub-center strong{font-size:clamp(15px,4.4vw,20px)}
+  .library-hub-center>span:not(.center-count){font-size:10px;line-height:1.15}
+  .library-hub-center .center-count{font-size:9px!important;padding:4px 6px}
+}
+
 </style></head><body>
 <section id="login" class="shell" aria-labelledby="login-title"><header class="bar"><div class="brand-wrap"><img class="school-logo" src="data:image/jpeg;base64,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" alt="Child Development & Guidance Center logo"><div><div class="brand">CHILD DEVELOPMENT &amp; GUIDANCE CENTER</div><div class="tag">EST. 1980</div></div></div><span class="tag">DEMO</span></header><img class="login-logo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCABgAGADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAAUDBAYCAQf/xAA6EAACAQMCBAIHBQYHAAAAAAABAgMABBESIQUTMUEiUQYUQlJhcZEVJDI0gQcjM3KhsRaSssHR4fD/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/EAB0RAQEAAgMAAwAAAAAAAAAAAAABETECIUEDImH/2gAMAwEAAhEDEQA/ANxRRRQFFFeM6opZiAB3NB7RVeS7CIXCgIOryNoX+tVZuKJFIqNPGGaTlAJEz+Lbbb50TJlRVKS5khuY7dp4DLICUQoRn9akN1JF+YgYL78fiH/NDKzRXMUscyB4nDqe4NdUUUUUUBRRXkjrHGzscKoyaDiaURgADU7bKo70i4hxlVjJtCLqfJQso2iYg6SoOzDIIqzxCW4SNJYmkUu+JmhQO8S42AX54zVXhVnJcCTC8gSEG5ZQBlx2XyPc+R6VZ13WbVJ47i/nlMy5e5txHLEg1lT2YD2Qdjgkbg0wtuE3EW8VuEXnLOqyz50sBjAwDtjtmncEEVtEI4UCKOwqO8voLMDmlmdgSsaKWdseQFM2mL7Sq44ddvxOO/eLMkeMCGfAIHbBHQ+War3hmn4usw1xldJCSMyMoXJYKBsxP6+VMoOMcxBLLblINWkuHDGM+TjqtX54IrmIxzIroexp3DF8ILPiK3JWVXSC4YgF0HgZ2O0RHcgdT2p3aXYuNSOvLnj2eMnp8R5g+dJuJ2M0ToquST4IpmbBAJ3QnsT0DYz2qDh9wuiOG35hvbfWyqFbToB3iydzsRgnvTGe4n7GooqO3nS5gSaI5RxkVJUbFVb1xqjjIJUZkYKMkhe2PnirVKuKGQm6MSF2SJBpD6Nix1b5GNh50SkyRz3kyTypA7yMFjuIWI1NnbUu34dzuNsCtVbwJbQJDEMIgwKRcEjDXcDeqLbbPKQH16zhV1Zyc9W71oat2k3lxcM6W8rRjU6oSo8zjavkMl5cyXRuZJpOeTkvqOQa+pcc4rHwjhz3L4L/AIY095uwr5VLM8s7TOcyOxcnHfOa6/FNtN5DdyXdqjFczXNslvK2MLzG6Z+IGT+oFadRpULnOBisvw3iMXE7A3MgAVwIr1F20N7Mo8v/AHlT7h87sHt7g5uIcBj769mHz/vmufKCe4gS5geGUZRxg1mLr1qGZZYWm5pkCXRiVRnR0JdugIxtt1NaukHGIvvkuLc3OGhm5I6OfEu+3Tp9Kk2zdr3C35dxcW+AFOJ4wDkAP1A+TA/WmNIeEBory0BtmttUUy8tjnA1KwxsNtzT6osFKr+0F7c3FsZOXzI431FQw8LHqD1HSmtLuLRjXFIxIjcNBIR2VxgH64+tE5KfC4oLW8hEF1HcrJzVLRhQFY6WxgbDoae1lVi9Tu9EDySumBzZEESmRPwoo2zkFhtntWmt50uYEmiOUcZFW7JvDB+lycUvrqS4ltJY7K32QtjGPePzrMVvf2gXvK4bDaKfFO+pv5V/7IrELayNYvdgfu0kEZ+ZBP8AtXo4X6qa+jg4haXUVzb2rz285MToMYkHcfPYmtZYC+nWCa3tgqRNiOSWUBmiPVGAzuMf0HxpD6JXZ+z7uAbvbOt1GPgNmH0/vWw4cwS4uoAcrqE0f8r7/wCoNXPne1XqR8Su2gvpnS4it88qAyyYwudTHGdicYpxcTpbQPLKcIgyazN81wJbeE26tNO5kbnr+6Zm9nUNwQABXOTNZu5DCxlmuOI2huGR3jhlOtMYdSwCtttuBTqlXBIEWS4liULEuIIgN9lzk/5i30prUWCuLiFLmB4ZRlHGDXdFFZi+gncOVH3+3AVyoJklTPhKH2Qe5HSrVndT21y4MP4kE0sMZ1ABvaQ9+m47ncUzvrIXQV435VxH/DkxnHmCO4PcVT4UbSyla3e2Szun6gHwyY9wnqPh28quemcKfFvR+D0jnS7W/YIqaFVFBA8/1qP/AAaPs71H15uTzOb/AAhktjHXNNEthdXNw/Ims5I30rMjAc0eeOh/Wqc3FprOSRHuQ3Lk5ZMkGScKGJyrdMEVZy5aM32IOG+iH2ZdesW9+2rSVIeIEEHz3pjBafZhjnur1Wjii5IymnI2x33O39aXtx53OPWcAMQxig3UDGT4m6b+WfhTJ7YWtzbvyJrySR9LTOwPKHnjoP0pbyuzN8ihxLiOqWPmukDMfu8UvvdncdvgPPriq1uty8w0K9tezFlaJGPLz7U2PhuPifOmfF2tr6RbWOH1u5jOdIYhEzt4yO3w71csLEWgZ5H5txJjmSEYz5ADsB2FTPRIntreO1t44IhhI1CipKKKjQooooCo7i3huojFcRrIh7MM1JRQLxYXVv8Akb1gnaK4HMUfI7EfU1VlsrtwVm4faTAyiY6Z2XU4xvgr8BTqiiYZ9eDSknHDrVSW1ZluXfHXbAHTc7UwPD7q5/PXrFO8VuOWp+Z3Y/UUwooYR29tDaxCK3jWNB7KjFSUUUUUUUUH/9k=" alt="Child Development & Guidance Center logo"><div class="intro"><div class="brand">YOUR SCHOOL WORKSPACE</div><h1 id="login-title">Choose your role.</h1><p>One tap to enter your school orbit.</p></div><div class="roles" id="roles"></div><p class="hint">Demo access only. No password required. These role menus are a preview, not secure accounts.</p><dialog id="student-access" aria-labelledby="student-access-title"><div class="panel-actions"><button class="outline" id="student-access-close">← Back</button></div><h2 id="student-access-title">Student Access <span class="new-chip">NEW</span></h2><p class="hint">Choose how you want to enter.</p><div class="items"><button class="item" id="student-demo-login"><strong>ONE-TAP DEMO LOGIN</strong><br><span class="hint">Open Student Hub instantly.</span></button><button class="item" id="student-signin"><strong>RETURNING STUDENT / SIGN IN</strong><br><span class="hint">Sample Student ID + PIN.</span></button><button class="item new-feature" id="student-activate"><strong>FIRST-TIME STUDENT / ACTIVATE ACCOUNT</strong><span class="new-chip">NEW</span><br><span class="hint">Verify, create PIN, choose accessibility, then see a quick tour.</span></button></div></dialog>
 <dialog id="student-signin-dialog"><div class="panel-actions"><button class="outline" id="student-signin-back">← Back</button></div><h2>Returning Student Sign In</h2><div class="card"><label>Student ID</label><input value="DEMO-STUDENT-001" readonly><label>Demo PIN</label><input value="1234" readonly></div><button class="item" id="student-signin-submit"><strong>SIGN IN</strong></button><button class="item new-feature" id="student-forgot-pin"><strong>FORGOT PIN?</strong><span class="new-chip">NEW</span><br><span class="hint">Preview verified student PIN recovery.</span></button></dialog>
@@ -2024,6 +2040,15 @@ function libraryView(view){
     inventory.append(action('OPEN SHELF AUDIT',()=>libraryView('Inventory & Shelf Audit'),'outline'));
     grid.append(inventory);
     r.append(grid);
+    const quick=card('QUICK ACTIONS',['Jump directly to the most common librarian tasks.']);
+    const qa=el('div',undefined,'today-actions');
+    qa.append(
+      action('SEARCH CATALOG',()=>libraryView('Book Catalog'),'primary'),
+      action('BORROW / RETURN',()=>libraryView('Borrow / Return'),'primary'),
+      action('CHECK OVERDUE',()=>libraryView('Overdue & Fines'),'outline'),
+      action('CHECK CLEARANCE',()=>libraryView('Library Clearance'),'outline')
+    );
+    quick.append(qa);r.append(quick);
   }
 
   if(view==='Book Catalog'){
@@ -2196,6 +2221,27 @@ const librarianModuleBase=openModule;
 openModule=function(name){
   if(activeRole==='Librarian'&&menus.Librarian.includes(name)){libraryView(name);return}
   librarianModuleBase(name);
+};
+
+/* Functional Librarian orbit center */
+const librarianRenderBase=render;
+render=function(){
+  librarianRenderBase();
+  if(activeRole!=='Librarian')return;
+  const old=$('orbit').querySelector('.center');
+  if(!old)return;
+  const available=libraryState.books.reduce((n,b)=>n+Number(b.available||0),0);
+  const activeLoans=libraryState.loans.filter(l=>!l.returned).length;
+  const overdue=libraryOverdues().length;
+  const center=action('',()=>libraryView('Library Dashboard'),'center parent-center library-hub-center');
+  center.setAttribute('aria-label','Open Library Hub dashboard. '+available+' available copies, '+activeLoans+' books on loan, '+overdue+' overdue.');
+  center.append(
+    el('strong','LIBRARY HUB'),
+    el('span','Catalog · Loans · Overdue · Clearance'),
+    el('span',available+' available · '+activeLoans+' on loan · '+overdue+' overdue','center-count')
+  );
+  old.replaceWith(center);
+  $('welcome').textContent='Library operations hub';
 };
 const adminBeforeCorrections=staffAdmin;
 staffAdmin=function(view){if(view!=='Staff Requests')return adminBeforeCorrections(view);if(activeRole!=='Administrator')return;featureOpened(view);currentModule=staffOfficeMenu;const r=demoPanel(view,'Administrator · Attendance and leave approvals');$('module-back').hidden=false;if(!staff.requests.length)r.append(el('p','No requests yet.'));staff.requests.forEach(q=>{const c=card(q.type+' · '+q.id,[staff.profile.name,q.status,q.start?q.start+' to '+q.end:q.date||'',q.category||q.item||'',q.details,q.timeIn?'Requested times: '+q.timeIn+' → '+q.timeOut:'',q.remark||'']);if(q.status==='Pending')c.append(form([{key:'decision',label:'Decision for '+q.id,options:['Approved','Declined']},{key:'remark',label:'Remarks for '+q.id,type:'textarea'}],'Save decision',v=>{if(q.status!=='Pending')return;if(v.decision==='Approved'&&q.type==='Attendance correction'){if(!q.timeIn||!q.timeOut){feedback('This older correction has no structured times. Decline it and ask Staff to resubmit using the updated form.');return}const before=staff.attendance.find(a=>a.date===q.date);const after={date:q.date,in:manilaDateTime(q.date,q.timeIn),out:manilaDateTime(q.date,q.timeOut)};staff.corrections=staff.corrections||[];staff.corrections.push({requestId:q.id,date:q.date,before:before?{...before}:null,after:{...after},reason:q.details,reviewed:new Date().toISOString()});if(before)Object.assign(before,after);else staff.attendance.push(after)}if(v.decision==='Approved'&&q.type==='Leave'){if(!leaveAllowance[q.category]||q.start?.slice(0,4)!==q.end?.slice(0,4)||!leaveDays(q)){feedback('This request needs a valid leave type and date range. Ask Staff to resubmit.');return}if(leaveDays(q)>leaveTotals(q.category,q.start.slice(0,4)).remaining){feedback('Insufficient remaining leave balance.');return}}q.status=v.decision;q.remark=v.remark;q.reviewed=new Date().toISOString();q.reviewer='Administrator demo';staffNotice(q.type+' '+q.status.toLowerCase()+': '+q.remark,'Request Tracker');const ok=staffSave('Administrator '+q.status.toLowerCase()+' '+q.type);render();staffAdmin(view);feedback(ok?'Decision saved. Attendance and leave totals are updated where applicable.':'Updated for this session; browser saving failed.')}));r.append(c)});syncFeatureHighlights();};
