@@ -405,16 +405,16 @@ try{const saved=JSON.parse(localStorage.getItem(STAFF_KEY)||'null');if(saved&&sa
 function staffSave(note){if(note)staff.activity.unshift({date:new Date().toISOString(),text:note});staff.activity=staff.activity.slice(0,100);try{localStorage.setItem(STAFF_KEY,JSON.stringify(staff));staffStorage=true}catch(e){staffStorage=false}return staffStorage}
 function staffDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 function staffTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila'}):'—'}
-const staffMenus={Dashboard:['Today’s Overview','Activity History'],Tasks:['My Tasks','Completed Tasks'],Attendance:['Time In / Out','Attendance Records','Correction Request'],Calendar:['School Events','Duty Schedule'],Announcements:['School Notices'],Messages:['Inbox','School Contacts'],'Leave & Requests':['Apply for Leave','Supply Request','Request Tracker'],'My Profile & Help':['My Profile','Quick Tour','Support Request']};
+const staffMenus={Dashboard:['Today’s Overview','Activity History'],'My Schedule':['Today’s Schedule','Duty Roster'],Tasks:['My Tasks','Completed Tasks'],Attendance:['Time In / Out','Attendance Records','Correction Request'],Calendar:['School Events','Duty Schedule'],Announcements:['School Notices'],Messages:['Inbox','School Contacts'],'Leave & Requests':['Apply for Leave','Supply Request','Request Tracker'],'My Profile & Help':['My Profile','Quick Tour','Support Request']};
 menus.Staff=Object.keys(staffMenus);
 const staffOldModule=openModule;
 openModule=function(name){if(activeRole!=='Staff')return staffOldModule(name);if(!staffMenus[name])return;currentModule=name;const root=demoPanel(name,'Staff workspace · NEW');const grid=el('div',undefined,'items');staffMenus[name].forEach(label=>{const b=action(label,()=>staffView(label),'item');b.append(el('span','NEW','new-chip'));grid.append(b)});root.append(grid);$('panel').classList.add('staff-panel')};
 const staffOldRender=render;
-render=function(){staffOldRender();$('panel').classList.toggle('staff-panel',activeRole==='Staff');if(activeRole!=='Staff')return;$('new-feature-banner').hidden=false;for(const b of $('orbit').querySelectorAll('.node')){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'))}const old=$('orbit').querySelector('.center');const center=action('',()=>{currentModule='Dashboard';staffView('Today’s Overview')},'center parent-center');center.append(el('strong','STAFF HUB'),el('span','Today’s duties · Tasks · Attendance · Requests · Notifications'));old.replaceWith(center);$('save-status').textContent=staffStorage?'Staff demo saves in this browser only. Use fictional information.':'Storage unavailable. Staff changes last until refresh.'};
+render=function(){staffOldRender();$('panel').classList.toggle('staff-panel',activeRole==='Staff');if(activeRole!=='Staff')return;$('new-feature-banner').hidden=false;for(const b of $('orbit').querySelectorAll('.node')){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'))}const old=$('orbit').querySelector('.center');const center=action('',()=>{currentModule='Dashboard';staffView('Today’s Overview')},'center parent-center');center.append(el('strong','STAFF HUB'),el('span','Today’s schedule · Duties · Tasks · Attendance · Requests · Notifications'));old.replaceWith(center);$('save-status').textContent=staffStorage?'Staff demo saves in this browser only. Use fictional information.':'Storage unavailable. Staff changes last until refresh.'};
 function staffDone(view,message){const ok=staffSave(message);render();staffView(view);feedback(message+(ok?' · Saved in this browser.':' · Could not save; changes are temporary.'))}
 function staffRequest(v,type,view){staff.requests.unshift({...v,id:uid(),type,status:'Pending',created:new Date().toISOString()});staffDone(view,'Demo '+type.toLowerCase()+' submitted')}
 function staffView(view){const root=demoPanel(view,staff.profile.name+' · Staff demo · NEW');$('panel').classList.add('staff-panel');$('module-back').hidden=false;const add=(title,lines)=>{const c=card(title,lines);root.append(c);return c};const go=(label)=>action(label,()=>staffView(label));
-if(view==='Today’s Overview'){add('Today · '+staffDate(),['Department: '+staff.profile.department,staff.tasks.filter(t=>t.status!=='Completed').length+' open tasks',staff.requests.filter(r=>r.status==='Pending').length+' pending requests',staff.attendance.some(a=>a.date===staffDate()&&!a.out)?'Currently timed in':'Not currently timed in']);const unread=staffAlerts().filter(n=>!n.read).length;root.append(go('Time In / Out'),go('My Tasks'),go('Request Tracker'),action('Notifications'+(unread?' ('+unread+')':''),()=>staffView('Notification Center'),'outline'),go('Quick Tour'));staff.tasks.filter(t=>t.status!=='Completed').forEach(t=>add(t.title,['Due '+t.due+' · '+t.priority+' priority',t.status]));add('Upcoming duty',['September 28 · 2:00–4:30 PM','Parent meeting · School Auditorium']);}
+if(view==='Today’s Overview'){add('Today · '+staffDate(),['Department: '+staff.profile.department,staff.tasks.filter(t=>t.status!=='Completed').length+' open tasks',staff.requests.filter(r=>r.status==='Pending').length+' pending requests',staff.attendance.some(a=>a.date===staffDate()&&!a.out)?'Currently timed in':'Not currently timed in']);const unread=staffAlerts().filter(n=>!n.read).length;root.append(go('Today’s Schedule'),go('Time In / Out'),go('My Tasks'),go('Request Tracker'),action('Notifications'+(unread?' ('+unread+')':''),()=>staffView('Notification Center'),'outline'),go('Quick Tour'));staff.tasks.filter(t=>t.status!=='Completed').forEach(t=>add(t.title,['Due '+t.due+' · '+t.priority+' priority',t.status]));add('Upcoming duty',['September 28 · 2:00–4:30 PM','Parent meeting · School Auditorium']);}
 if(view==='Activity History'){if(!staff.activity.length)add('No activity yet',['Your Staff demo actions will appear here.']);staff.activity.forEach(a=>add(staffTime(a.date),[a.text]));}
 if(view==='My Tasks'||view==='Completed Tasks'){const list=staff.tasks.filter(t=>(t.status==='Completed')===(view==='Completed Tasks'));if(!list.length)add('No tasks here',['Completed tasks appear in Completed Tasks.']);list.forEach(t=>{const c=add(t.title,['Due '+t.due+' · '+t.priority+' priority',t.status,t.note]);c.append(form([{key:'status',label:'Task status',options:['To do','In progress','Completed'],value:t.status},{key:'note',label:'Progress note',type:'textarea',value:t.note}],'Save task update',v=>{Object.assign(t,v);staffDone(view,'Task updated: '+t.title)}));const label=el('label','Attach sample text file (maximum 100 KB)');const input=el('input');input.type='file';input.accept='.txt';input.onchange=async()=>{const f=input.files[0];if(!f)return;if(f.size>102400||!f.name.toLowerCase().endsWith('.txt')){feedback('Choose a .txt file under 100 KB.');return}t.files.push({name:f.name,text:await f.text()});staffDone(view,'Sample attachment saved')};label.append(input);c.append(label);t.files.forEach(f=>c.append(action('View '+f.name,()=>{const r=demoPanel(f.name,'Sample task attachment');r.append(el('pre',f.text));$('module-back').hidden=false})));});}
 if(view==='Time In / Out'){const a=staff.attendance.find(a=>a.date===staffDate());add('Today’s attendance',[staffDate()+' · Philippine time','Time in: '+staffTime(a?.in),'Time out: '+staffTime(a?.out)]);const start=action('Time in (demo)',()=>{if(staff.attendance.some(a=>a.date===staffDate()))return;staff.attendance.unshift({date:staffDate(),in:new Date().toISOString(),out:null});staffDone(view,'Time in recorded')},'primary');start.disabled=!!a;const end=action('Time out (demo)',()=>{if(!a||a.out)return;a.out=new Date().toISOString();staffDone(view,'Time out recorded')});end.disabled=!a||!!a.out;root.append(start,end,go('Attendance Records'));}
@@ -468,7 +468,7 @@ if(view==='Notification Center'){const items=staffAlerts();if(!items.length)r.ap
 const connectedDone=staffDone;
 staffDone=function(view,message){if(message==='Sample office reply added')staffNotice('You have a new sample office reply.','Inbox');connectedDone(view,message)};
 // Only the current release is new. A feature is acknowledged when its panel closes.
-const FEATURE_RELEASE='staff-attendance-leave-highlight-fix-2026-09-21-v2';
+const FEATURE_RELEASE='staff-schedule-duty-roster-2026-09-21-v1';
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
 try{const saved=JSON.parse(localStorage.getItem(FEATURE_SEEN_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))seenFeatures=saved}catch(e){}
@@ -477,6 +477,7 @@ const featureId=(role,label)=>{
 if(role==='Staff'){
 if(['Attendance','Monthly Report','Correction Request'].includes(label))return 'Staff:attendance-reports';
 if(['Leave & Requests','Leave Balances','Apply for Leave'].includes(label))return 'Staff:leave-balances';
+if(['My Schedule','Today’s Schedule','Duty Roster'].includes(label))return 'Staff:my-schedule';
 }
 if(role==='Administrator'&&['Staff Operations','Open Staff Operations','Staff Requests'].includes(label))return 'Administrator:staff-operations';
 return null;
@@ -494,7 +495,7 @@ if(featureUnseen(id)){b.classList.add('new-feature');b.append(el('span','NEW','n
 }
 const banner=$('new-feature-banner');
 if(activeRole==='Staff'||activeRole==='Administrator'){
-const pending=Object.keys(activeRole==='Staff'?{'Staff:attendance-reports':1,'Staff:leave-balances':1}:{'Administrator:staff-operations':1}).some(featureUnseen);
+const pending=Object.keys(activeRole==='Staff'?{'Staff:attendance-reports':1,'Staff:leave-balances':1,'Staff:my-schedule':1}:{'Administrator:staff-operations':1}).some(featureUnseen);
 banner.classList.toggle('features-unseen',pending);
 const title=banner.querySelector('strong');const titleText=activeRole==='Staff'?'CONNECTED STAFF WORKFLOWS':'STAFF OPERATIONS';if(title&&title.textContent!==(pending?'NEW · ':'')+titleText)title.textContent=(pending?'NEW · ':'')+titleText;
 }else{banner.hidden=true;banner.classList.remove('features-unseen')}
@@ -529,6 +530,47 @@ if(view==='Apply for Leave'){r.append(el('p','Demo policy: weekdays only; holida
 if(view==='Leave Balances'){const year=el('input');year.type='number';year.min='2020';year.max='2100';year.value=staffDate().slice(0,4);const label=el('label','Year ');label.append(year);r.append(label);const out=el('div');r.append(out);const draw=()=>{if(!year.reportValidity())return;out.replaceChildren(el('p','Illustrative annual allocation: 15 vacation, 15 sick, 3 personal days. Monday–Friday only; no holiday or carryover calculations.'));out.append(table(['Type','Allocated','Approved / used','Pending','Remaining','Available to request'],Object.keys(leaveAllowance).map(k=>{const t=leaveTotals(k,year.value);return[k,leaveAllowance[k],t.used,t.pending,t.remaining,t.remaining-t.pending]})));};year.onchange=draw;draw();}
 if(view==='Monthly Report'){const label=el('label','Report month '),month=el('input');month.type='month';month.value=staffDate().slice(0,7);label.append(month);r.append(label);const out=el('div');r.append(out);function draw(){const rows=staff.attendance.filter(a=>a.date.startsWith(month.value)).sort((a,b)=>a.date.localeCompare(b.date));let mins=0,late=0,missing=0;const data=rows.map(a=>{const start=a.in?new Date(a.in):null,end=a.out?new Date(a.out):null;const duration=start&&end&&end>start?Math.round((end-start)/60000):0;mins+=duration;if(!a.out)missing++;const time=start?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(start):'';if(time>'08:00')late++;return[a.date,staffTime(a.in),staffTime(a.out),(duration/60).toFixed(2),time>'08:00'?'Late':'—']});out.replaceChildren(card(month.value+' · '+staff.profile.name,[rows.length+' recorded days · '+(mins/60).toFixed(2)+' gross hours',late+' late arrivals · '+missing+' missing time-outs','Demo schedule: 8:00 AM start. Hours exclude incomplete entries; breaks are not deducted. No absence inference.']));if(rows.length)out.append(table(['Date','In','Out','Gross hours','Arrival'],data));else out.append(el('p','No attendance records for this month.'));const history=(staff.corrections||[]).filter(c=>c.date.startsWith(month.value));if(history.length){out.append(el('h2','Approved corrections'));history.forEach(c=>out.append(card(c.date,['Original: '+staffTime(c.before?.in)+' → '+staffTime(c.before?.out),'Corrected: '+staffTime(c.after.in)+' → '+staffTime(c.after.out),'Reason: '+c.reason,'Reviewed: '+staffTime(c.reviewed)])))}return data}month.onchange=draw;draw();r.append(action('Print / Save PDF',()=>window.print()),action('Export CSV',()=>{const data=draw(),csv=[['Date','Time in','Time out','Gross hours','Arrival'],...data].map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=el('a');a.href=url;a.download='staff-attendance-'+month.value+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}));}
 syncFeatureHighlights();};
+
+const staffViewBeforeSchedule=staffView;
+staffView=function(view){
+if(!['Today’s Schedule','Duty Roster'].includes(view))return staffViewBeforeSchedule(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff schedule');
+$('module-back').hidden=false;
+if(view==='Today’s Schedule'){
+r.append(card('Today · '+staffDate(),[
+'8:00 AM · Staff time in / morning preparation',
+'9:00 AM · Records and office duties',
+'11:00 AM · Student / parent assistance window',
+'1:00 PM · Department work block',
+'2:00 PM · Assigned school duty',
+'4:30 PM · Wrap-up and pending tasks'
+]));
+r.append(card('Assigned Duty',[
+'Parent Meeting Support',
+'2:00–4:30 PM',
+'School Auditorium',
+'Report to the assigned coordinator before duty begins.'
+]));
+r.append(action('Open Duty Roster',()=>staffView('Duty Roster'),'item'));
+}
+if(view==='Duty Roster'){
+r.append(el('p','Fictional demo roster. In a live school, assignments would come from an authorized coordinator.'));
+r.append(table(['Date','Time','Duty','Location','Status'],[
+['Sep 21','2:00–4:30 PM','Parent Meeting Support','School Auditorium','Assigned'],
+['Sep 23','7:30–8:15 AM','Gate Assistance','Main Gate','Upcoming'],
+['Sep 25','11:30 AM–12:30 PM','Lunch Supervision','Cafeteria','Upcoming'],
+['Sep 28','2:00–4:30 PM','Parent Meeting','School Auditorium','Upcoming']
+]));
+r.append(card('Duty Notes',[
+'Arrive 10 minutes before the assigned duty.',
+'Contact the coordinator if you cannot attend.',
+'Use Leave & Requests for formal schedule-related requests.'
+]));
+}
+syncFeatureHighlights();
+};
+
 const adminBeforeCorrections=staffAdmin;
 staffAdmin=function(view){if(view!=='Staff Requests')return adminBeforeCorrections(view);if(activeRole!=='Administrator')return;featureOpened(view);currentModule=staffOfficeMenu;const r=demoPanel(view,'Administrator · Attendance and leave approvals');$('module-back').hidden=false;if(!staff.requests.length)r.append(el('p','No requests yet.'));staff.requests.forEach(q=>{const c=card(q.type+' · '+q.id,[staff.profile.name,q.status,q.start?q.start+' to '+q.end:q.date||'',q.category||q.item||'',q.details,q.timeIn?'Requested times: '+q.timeIn+' → '+q.timeOut:'',q.remark||'']);if(q.status==='Pending')c.append(form([{key:'decision',label:'Decision for '+q.id,options:['Approved','Declined']},{key:'remark',label:'Remarks for '+q.id,type:'textarea'}],'Save decision',v=>{if(q.status!=='Pending')return;if(v.decision==='Approved'&&q.type==='Attendance correction'){if(!q.timeIn||!q.timeOut){feedback('This older correction has no structured times. Decline it and ask Staff to resubmit using the updated form.');return}const before=staff.attendance.find(a=>a.date===q.date);const after={date:q.date,in:manilaDateTime(q.date,q.timeIn),out:manilaDateTime(q.date,q.timeOut)};staff.corrections=staff.corrections||[];staff.corrections.push({requestId:q.id,date:q.date,before:before?{...before}:null,after:{...after},reason:q.details,reviewed:new Date().toISOString()});if(before)Object.assign(before,after);else staff.attendance.push(after)}if(v.decision==='Approved'&&q.type==='Leave'){if(!leaveAllowance[q.category]||q.start?.slice(0,4)!==q.end?.slice(0,4)||!leaveDays(q)){feedback('This request needs a valid leave type and date range. Ask Staff to resubmit.');return}if(leaveDays(q)>leaveTotals(q.category,q.start.slice(0,4)).remaining){feedback('Insufficient remaining leave balance.');return}}q.status=v.decision;q.remark=v.remark;q.reviewed=new Date().toISOString();q.reviewer='Administrator demo';staffNotice(q.type+' '+q.status.toLowerCase()+': '+q.remark,'Request Tracker');const ok=staffSave('Administrator '+q.status.toLowerCase()+' '+q.type);render();staffAdmin(view);feedback(ok?'Decision saved. Attendance and leave totals are updated where applicable.':'Updated for this session; browser saving failed.')}));r.append(c)});syncFeatureHighlights();};
 
