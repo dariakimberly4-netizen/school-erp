@@ -773,10 +773,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:reading-tracker':'librarian-reading-tracker-2026-09-21-v1',
-'Librarian:stock-recon':'librarian-stock-recon-2026-09-21-v1',
-'Librarian:barcode-isbn':'librarian-barcode-isbn-2026-09-21-v1',
-'Librarian:repair-queue':'librarian-repair-queue-2026-09-21-v1'
+'Librarian:settings':'librarian-settings-2026-09-21-v1',
+'Librarian:borrowing-rules':'librarian-borrowing-rules-2026-09-21-v1',
+'Librarian:seat-management':'librarian-seat-management-2026-09-21-v1',
+'Librarian:teacher-requests':'librarian-teacher-requests-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -812,10 +812,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Reading Program Tracker')return 'Librarian:reading-tracker';
-if(role==='Librarian'&&label==='Stock Reconciliation')return 'Librarian:stock-recon';
-if(role==='Librarian'&&label==='Barcode / ISBN Lookup')return 'Librarian:barcode-isbn';
-if(role==='Librarian'&&label==='Book Repair Queue')return 'Librarian:repair-queue';
+if(role==='Librarian'&&label==='Library Settings')return 'Librarian:settings';
+if(role==='Librarian'&&label==='Borrowing Rules')return 'Librarian:borrowing-rules';
+if(role==='Librarian'&&label==='Reading Room / Seat Management')return 'Librarian:seat-management';
+if(role==='Librarian'&&label==='Teacher Resource Requests')return 'Librarian:teacher-requests';
 return null;
 };
 function featureUnseen(id){
@@ -852,10 +852,10 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Programs & Engagement'&&featureUnseen('Librarian:reading-tracker'))unseen=true;
-  if(label==='Inventory'&&featureUnseen('Librarian:stock-recon'))unseen=true;
-  if(label==='Catalog & Collection'&&featureUnseen('Librarian:barcode-isbn'))unseen=true;
-  if(label==='Overdue & Clearance'&&featureUnseen('Librarian:repair-queue'))unseen=true;
+  if(label==='Library Dashboard'&&featureUnseen('Librarian:settings'))unseen=true;
+  if(label==='Circulation'&&featureUnseen('Librarian:borrowing-rules'))unseen=true;
+  if(label==='Programs & Engagement'&&featureUnseen('Librarian:seat-management'))unseen=true;
+  if(label==='Acquisitions'&&featureUnseen('Librarian:teacher-requests'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2863,13 +2863,13 @@ libraryView=function(view){
 
 /* Librarian main menu + submenu organization */
 const librarianGroups={
-  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions'],
+  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings'],
   'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources'],
-  'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification'],
+  'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules'],
   'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue'],
   'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review'],
-  'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements'],
-  'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books'],
+  'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management'],
+  'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests'],
   'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report']
 };
 menus.Librarian=Object.keys(librarianGroups);
@@ -2911,6 +2911,147 @@ function librarianGroupView(group){
   syncFeatureHighlights();
 }
 
+
+/* Librarian administration and service pack */
+if(!libraryState.settings || typeof libraryState.settings!=='object')libraryState.settings={
+  openTime:'08:00',closeTime:'17:00',defaultLoanDays:7,maxBooks:3,finePerDay:5,renewals:1
+};
+if(!Array.isArray(libraryState.seats))libraryState.seats=Array.from({length:12},(_,i)=>({
+  id:'SEAT-'+String(i+1).padStart(2,'0'),status:i<3?'Occupied':'Available',
+  occupant:i===0?'Alex Santos':i===1?'Mika Reyes':i===2?'Jamie Dela Cruz':''
+}));
+if(!Array.isArray(libraryState.teacherRequests))libraryState.teacherRequests=[
+  {id:'TRR-001',teacher:'Ms. Rivera',department:'Science',resource:'Grade 7 climate references',needed:'2026-09-25',purpose:'Class research activity',status:'Pending'}
+];
+librarySave();
+
+const libraryViewAdminBase=libraryView;
+libraryView=function(view){
+  const special=['Library Settings','Borrowing Rules','Reading Room / Seat Management','Teacher Resource Requests'];
+  if(!special.includes(view))return libraryViewAdminBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Library Settings'){
+    r.append(card('LIBRARY SETTINGS',[
+      'Configure demo operating hours and core circulation defaults.',
+      'These settings are stored in this browser only.'
+    ]));
+    r.append(form([
+      {key:'openTime',label:'Library opens',type:'time',value:libraryState.settings.openTime},
+      {key:'closeTime',label:'Library closes',type:'time',value:libraryState.settings.closeTime},
+      {key:'defaultLoanDays',label:'Default loan days',type:'number',value:String(libraryState.settings.defaultLoanDays)},
+      {key:'maxBooks',label:'Maximum books per borrower',type:'number',value:String(libraryState.settings.maxBooks)},
+      {key:'finePerDay',label:'Fine per overdue day (₱)',type:'number',value:String(libraryState.settings.finePerDay)},
+      {key:'renewals',label:'Allowed renewals',type:'number',value:String(libraryState.settings.renewals)}
+    ],'SAVE SETTINGS',v=>{
+      libraryState.settings={
+        openTime:v.openTime,closeTime:v.closeTime,
+        defaultLoanDays:Math.max(1,Number(v.defaultLoanDays)||7),
+        maxBooks:Math.max(1,Number(v.maxBooks)||3),
+        finePerDay:Math.max(0,Number(v.finePerDay)||0),
+        renewals:Math.max(0,Number(v.renewals)||0)
+      };
+      librarySave('Library settings saved.');
+      libraryView(view);
+    }));
+    r.append(card('CURRENT SETTINGS',[
+      'Hours · '+libraryState.settings.openTime+'–'+libraryState.settings.closeTime,
+      'Loan period · '+libraryState.settings.defaultLoanDays+' day(s)',
+      'Borrower limit · '+libraryState.settings.maxBooks+' book(s)',
+      'Fine · ₱'+Number(libraryState.settings.finePerDay).toFixed(2)+' / overdue day',
+      'Renewals · '+libraryState.settings.renewals
+    ]));
+  }
+
+  if(view==='Borrowing Rules'){
+    const s=libraryState.settings;
+    r.append(card('BORROWING RULES',[
+      'Default loan period · '+s.defaultLoanDays+' day(s)',
+      'Maximum books · '+s.maxBooks+' per borrower',
+      'Allowed renewals · '+s.renewals,
+      'Overdue fine · ₱'+Number(s.finePerDay).toFixed(2)+' per day',
+      'Borrowers with overdue books or unresolved fines require librarian review.'
+    ]));
+    r.append(card('DEMO POLICY NOTES',[
+      'Borrower identity should be verified before checkout.',
+      'Damaged or lost items should be recorded before clearance.',
+      'Reservations may move to Ready when a copy becomes available.',
+      'Production rules should follow the school’s approved library policy.'
+    ]));
+    r.append(action('OPEN LIBRARY SETTINGS',()=>libraryView('Library Settings'),'outline'));
+    r.append(action('VERIFY BORROWER',()=>libraryView('Library Card / QR Verification'),'outline'));
+  }
+
+  if(view==='Reading Room / Seat Management'){
+    const occupied=libraryState.seats.filter(x=>x.status==='Occupied').length;
+    r.append(card('READING ROOM / SEAT MANAGEMENT',[
+      'Seats · '+libraryState.seats.length,
+      'Occupied · '+occupied,
+      'Available · '+(libraryState.seats.length-occupied),
+      'Demo seating only; no physical room system is connected.'
+    ]));
+    const grid=el('div',undefined,'today-grid');
+    libraryState.seats.forEach(s=>{
+      const box=card(s.id,[
+        'Status · '+s.status,
+        s.occupant?'Occupant · '+s.occupant:'Ready for use'
+      ]);
+      if(s.status==='Available')box.append(action('ASSIGN DEMO SEAT',()=>{
+        const name=prompt('Demo occupant name:');
+        if(!name)return;
+        s.status='Occupied';s.occupant=name.trim();
+        librarySave('Seat assigned.');
+        libraryView(view);
+      },'outline'));
+      else box.append(action('CHECK OUT',()=>{
+        s.status='Available';s.occupant='';
+        librarySave('Seat released.');
+        libraryView(view);
+      },'primary'));
+      grid.append(box);
+    });
+    r.append(grid);
+  }
+
+  if(view==='Teacher Resource Requests'){
+    r.append(card('TEACHER RESOURCE REQUESTS',[
+      libraryState.teacherRequests.filter(x=>x.status==='Pending').length+' pending request(s)',
+      'Teachers can request books, references, or curated materials for class use.'
+    ]));
+    r.append(form([
+      {key:'teacher',label:'Teacher name'},
+      {key:'department',label:'Department / subject'},
+      {key:'resource',label:'Requested resource'},
+      {key:'needed',label:'Needed by',type:'date'},
+      {key:'purpose',label:'Purpose / class activity',type:'textarea'}
+    ],'SUBMIT RESOURCE REQUEST',v=>{
+      libraryState.teacherRequests.unshift({
+        id:'TRR-'+Date.now().toString().slice(-6),...v,status:'Pending'
+      });
+      librarySave('Teacher resource request submitted.');
+      libraryView(view);
+    }));
+    libraryState.teacherRequests.forEach(x=>{
+      const box=card(x.id+' · '+x.resource,[
+        x.teacher+' · '+x.department,
+        'Needed by · '+x.needed,
+        'Status · '+x.status,
+        x.purpose
+      ]);
+      if(x.status==='Pending')box.append(
+        action('MARK FOR PREPARATION',()=>{x.status='Preparing';librarySave('Request moved to preparation.');libraryView(view)},'outline'),
+        action('DECLINE DEMO',()=>{x.status='Declined';librarySave('Request declined in demo.');libraryView(view)},'outline')
+      );
+      else if(x.status==='Preparing')box.append(action('MARK READY',()=>{x.status='Ready';librarySave('Resource request marked ready.');libraryView(view)},'primary'));
+      else if(x.status==='Ready')box.append(action('MARK RELEASED',()=>{x.status='Released';librarySave('Resource released.');libraryView(view)},'primary'));
+      r.append(box);
+    });
+  }
+  syncFeatureHighlights();
+};
 const librarianModuleBase=openModule;
 openModule=function(name){
   if(activeRole==='Librarian'&&librarianGroups[name]){librarianGroupView(name);return}
