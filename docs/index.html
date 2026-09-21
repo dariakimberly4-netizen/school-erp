@@ -647,7 +647,10 @@ const FEATURE_RELEASES={
 'Staff:directory':'staff-directory-2026-09-21-v1',
 'Staff:equipment':'staff-equipment-accountability-2026-09-21-v1',
 'Staff:emergency':'staff-emergency-center-2026-09-21-v1',
-'Staff:digital-id':'staff-digital-id-2026-09-21-v1'
+'Staff:digital-id':'staff-digital-id-2026-09-21-v1',
+'Staff:duty-change':'staff-duty-change-2026-09-21-v1',
+'Staff:announcement-ack':'staff-announcement-ack-2026-09-21-v1',
+'Staff:help-desk':'staff-help-desk-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -662,6 +665,9 @@ if(role==='Staff'&&label==='Staff Directory')return 'Staff:directory';
 if(role==='Staff'&&label==='Equipment Accountability')return 'Staff:equipment';
 if(role==='Staff'&&label==='Emergency Center')return 'Staff:emergency';
 if(role==='Staff'&&label==='Digital Staff ID')return 'Staff:digital-id';
+if(role==='Staff'&&label==='Shift / Duty Change Request')return 'Staff:duty-change';
+if(role==='Staff'&&label==='Announcement Acknowledgement')return 'Staff:announcement-ack';
+if(role==='Staff'&&label==='Staff Help Desk')return 'Staff:help-desk';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -1217,6 +1223,131 @@ if(view==='Digital Staff ID'){
     'This demo does not create a real access credential.'
   ]));
   r.append(action('PRINT / SAVE DEMO ID',()=>window.print(),'outline'));
+}
+syncFeatureHighlights();
+};
+
+
+/* Staff daily workflow pack: duty change, announcement acknowledgement, help desk */
+if(!Array.isArray(staff.announcementAcks))staff.announcementAcks=[];
+if(!Array.isArray(staff.helpTickets))staff.helpTickets=[];
+if(!Array.isArray(staff.dutyChanges))staff.dutyChanges=[];
+
+if(!staffMenus['My Schedule'].includes('Shift / Duty Change Request'))staffMenus['My Schedule'].push('Shift / Duty Change Request');
+if(!staffMenus.Announcements.includes('Announcement Acknowledgement'))staffMenus.Announcements.push('Announcement Acknowledgement');
+if(!staffMenus['My Profile & Help'].includes('Staff Help Desk'))staffMenus['My Profile & Help'].push('Staff Help Desk');
+menus.Staff=Object.keys(staffMenus);
+
+const staffViewBeforeDailyPack=staffView;
+staffView=function(view){
+if(!['Shift / Duty Change Request','Announcement Acknowledgement','Staff Help Desk'].includes(view))return staffViewBeforeDailyPack(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff workflow · Demo');
+$('module-back').hidden=false;
+
+if(view==='Shift / Duty Change Request'){
+  r.append(card('SHIFT / DUTY CHANGE REQUEST',[
+    'Request a duty swap, schedule adjustment, or substitute assignment.',
+    'All requests remain pending until an authorized administrator reviews them.'
+  ]));
+  r.append(form([
+    {key:'requestType',label:'Request type',options:['Duty swap','Schedule change','Substitute assignment']},
+    {key:'date',label:'Duty / schedule date',type:'date'},
+    {key:'currentDuty',label:'Current duty / schedule'},
+    {key:'requestedChange',label:'Requested change'},
+    {key:'replacement',label:'Proposed replacement / substitute'},
+    {key:'details',label:'Reason / notes',type:'textarea'}
+  ],'Submit demo duty change request',v=>{
+    const q={
+      ...v,
+      id:'DUTY-'+Date.now().toString().slice(-6),
+      type:'Duty change',
+      category:v.requestType,
+      status:'Pending',
+      created:new Date().toISOString()
+    };
+    staff.dutyChanges.unshift(q);
+    staff.requests.unshift(q);
+    staffDone('Shift / Duty Change Request','Duty / schedule change request submitted');
+  }));
+  if(staff.dutyChanges.length){
+    r.append(el('h2','My Duty Change Requests'));
+    staff.dutyChanges.forEach(q=>r.append(card(q.id+' · '+q.category,[
+      q.date,
+      'Current · '+q.currentDuty,
+      'Requested · '+q.requestedChange,
+      q.replacement?'Replacement · '+q.replacement:'',
+      'Status · '+q.status,
+      q.remark?('Admin remark · '+q.remark):'Awaiting review'
+    ].filter(Boolean))));
+  }
+  r.append(action('OPEN APPROVAL CENTER',()=>staffView('Approval Center'),'outline'));
+}
+
+if(view==='Announcement Acknowledgement'){
+  const notices=[
+    {id:'ANN-2026-0918',title:'Parent Meeting Staff Assignment',date:'September 18, 2026',priority:'Important',text:'Staff assigned to the September 28 parent meeting should review the duty roster.'},
+    {id:'ANN-2026-0920',title:'Emergency Preparedness Reminder',date:'September 20, 2026',priority:'Important',text:'Review evacuation assignments and emergency procedures before the next drill.'},
+    {id:'ANN-2026-0921',title:'Monthly Staff Coordination',date:'September 21, 2026',priority:'Normal',text:'Monthly coordination meeting details are available in Certificates & Memos.'}
+  ];
+  const acked=id=>staff.announcementAcks.some(a=>a.id===id);
+  r.append(card('ACKNOWLEDGEMENT SUMMARY',[
+    notices.filter(n=>acked(n.id)).length+' of '+notices.length+' acknowledged',
+    'Important notices stay visible until acknowledged.'
+  ]));
+  notices.forEach(n=>{
+    const box=card(n.title,[
+      n.date+' · '+n.priority,
+      n.text,
+      acked(n.id)?'Status · Acknowledged':'Status · Needs acknowledgement'
+    ]);
+    if(!acked(n.id))box.append(action('READ & ACKNOWLEDGE',()=>{
+      staff.announcementAcks.unshift({id:n.id,date:new Date().toISOString(),title:n.title});
+      staffDone('Announcement Acknowledgement','Announcement acknowledged: '+n.title);
+    },'primary'));
+    else box.append(el('p','Acknowledged · '+staffTime(staff.announcementAcks.find(a=>a.id===n.id)?.date),'status'));
+    r.append(box);
+  });
+}
+
+if(view==='Staff Help Desk'){
+  const open=staff.helpTickets.filter(t=>!['Resolved','Closed'].includes(t.status));
+  r.append(card('STAFF HELP DESK',[
+    open.length+' open ticket'+(open.length===1?'':'s'),
+    'Submit IT, HR, payroll, facilities, or general support requests.',
+    'Fictional demo tickets only.'
+  ]));
+  r.append(form([
+    {key:'category',label:'Help category',options:['IT / Technical','HR','Payroll','Facilities','General support']},
+    {key:'priority',label:'Priority',options:['Normal','High','Urgent']},
+    {key:'subject',label:'Subject'},
+    {key:'details',label:'Describe what you need help with',type:'textarea'}
+  ],'Create demo help ticket',v=>{
+    staff.helpTickets.unshift({
+      ...v,
+      id:'HELP-'+Date.now().toString().slice(-6),
+      status:'Open',
+      created:new Date().toISOString(),
+      updated:new Date().toISOString()
+    });
+    staffDone('Staff Help Desk','Help desk ticket created: '+v.subject);
+  }));
+  r.append(el('h2','My Help Tickets'));
+  if(!staff.helpTickets.length)r.append(el('p','No help tickets yet.','hint'));
+  staff.helpTickets.forEach(t=>{
+    const box=card(t.id+' · '+t.subject,[
+      t.category+' · '+t.priority+' priority',
+      'Status · '+t.status,
+      t.details,
+      'Created · '+staffTime(t.created),
+      t.reply?('Support reply · '+t.reply):'No reply yet.'
+    ]);
+    if(t.status==='Open')box.append(action('MARK RESOLVED',()=>{
+      t.status='Resolved';t.updated=new Date().toISOString();
+      staffDone('Staff Help Desk','Help ticket resolved: '+t.id);
+    },'outline'));
+    r.append(box);
+  });
 }
 syncFeatureHighlights();
 };
