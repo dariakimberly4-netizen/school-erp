@@ -757,7 +757,11 @@ const FEATURE_RELEASES={
 'Librarian:borrow-return':'librarian-borrow-return-2026-09-21-v1',
 'Librarian:overdue-fines':'librarian-overdue-fines-2026-09-21-v1',
 'Librarian:inventory-audit':'librarian-inventory-audit-2026-09-21-v1',
-'Librarian:clearance':'librarian-clearance-2026-09-21-v1'
+'Librarian:clearance':'librarian-clearance-2026-09-21-v1',
+'Librarian:holds':'librarian-holds-2026-09-21-v1',
+'Librarian:lost-damaged':'librarian-lost-damaged-2026-09-21-v1',
+'Librarian:acquisitions':'librarian-acquisitions-2026-09-21-v1',
+'Librarian:reports-export':'librarian-reports-export-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -793,6 +797,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
+if(role==='Librarian'&&label==='Reservations / Hold Queue')return 'Librarian:holds';
+if(role==='Librarian'&&label==='Damaged / Lost Book Reports')return 'Librarian:lost-damaged';
+if(role==='Librarian'&&label==='Acquisition Requests')return 'Librarian:acquisitions';
+if(role==='Librarian'&&label==='Reports & Export Center')return 'Librarian:reports-export';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -2217,6 +2225,175 @@ function libraryView(view){
   syncFeatureHighlights();
 }
 
+
+/* Librarian expansion pack */
+for(const label of ['Reservations / Hold Queue','Damaged / Lost Book Reports','Acquisition Requests','Reports & Export Center']){
+  if(!menus.Librarian.includes(label))menus.Librarian.push(label);
+}
+if(!Array.isArray(libraryState.holds))libraryState.holds=[
+  {id:'HOLD-001',borrower:'Alex Santos',borrowerId:'STU-2026-001',bookId:'BK-003',title:'Philippine History',requested:'2026-09-20',status:'Waiting'}
+];
+if(!Array.isArray(libraryState.incidents))libraryState.incidents=[];
+if(!Array.isArray(libraryState.acquisitions))libraryState.acquisitions=[
+  {id:'ACQ-001',title:'Introduction to Robotics',author:'J. Lim',category:'Technology',requestedBy:'Science Department',reason:'Reference for robotics activities',status:'Pending',created:'2026-09-18'}
+];
+librarySave();
+
+const libraryViewBase=libraryView;
+libraryView=function(view){
+  const special=['Reservations / Hold Queue','Damaged / Lost Book Reports','Acquisition Requests','Reports & Export Center'];
+  if(!special.includes(view))return libraryViewBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Reservations / Hold Queue'){
+    r.append(card('RESERVATIONS / HOLD QUEUE',[
+      libraryState.holds.length+' reservation(s) in the demo queue',
+      'Manage requests for books that are unavailable or currently on loan.'
+    ]));
+    r.append(form([
+      {key:'borrower',label:'Borrower name'},
+      {key:'borrowerId',label:'Borrower ID'},
+      {key:'bookId',label:'Book ID'},
+      {key:'notes',label:'Notes',type:'textarea'}
+    ],'ADD HOLD REQUEST',v=>{
+      const b=libraryBook(v.bookId.trim());
+      if(!b){feedback('Book ID not found in the catalog.');return}
+      libraryState.holds.push({
+        id:'HOLD-'+Date.now().toString().slice(-6),
+        borrower:v.borrower,borrowerId:v.borrowerId,bookId:b.id,title:b.title,
+        requested:staffDate(),status:b.available>0?'Ready':'Waiting',notes:v.notes
+      });
+      librarySave('Hold request added.');
+      libraryView('Reservations / Hold Queue');
+    }));
+    if(!libraryState.holds.length)r.append(el('p','No reservations yet.','hint'));
+    libraryState.holds.forEach(h=>{
+      const b=libraryBook(h.bookId);
+      if(h.status==='Waiting'&&b&&b.available>0)h.status='Ready';
+      const box=card(h.id+' · '+h.title,[
+        h.borrower+' · '+h.borrowerId,
+        'Requested · '+h.requested,
+        'Status · '+h.status,
+        h.notes||'No notes'
+      ]);
+      if(h.status==='Waiting')box.append(action('MOVE TO READY',()=>{h.status='Ready';librarySave('Reservation marked ready.');libraryView(view)},'outline'));
+      if(h.status==='Ready')box.append(action('MARK CLAIMED',()=>{h.status='Claimed';librarySave('Reservation marked claimed.');libraryView(view)},'primary'));
+      if(h.status!=='Cancelled'&&h.status!=='Claimed')box.append(action('CANCEL HOLD',()=>{h.status='Cancelled';librarySave('Reservation cancelled.');libraryView(view)},'outline'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Damaged / Lost Book Reports'){
+    r.append(card('DAMAGED / LOST BOOK REPORTS',[
+      'Record damaged, lost, or missing items and track how each case is resolved.'
+    ]));
+    r.append(form([
+      {key:'bookId',label:'Book ID'},
+      {key:'borrower',label:'Borrower / person reporting'},
+      {key:'issue',label:'Issue',options:['Damaged','Lost','Missing from shelf']},
+      {key:'resolution',label:'Initial resolution',options:['For assessment','For repair','For replacement','For payment review']},
+      {key:'details',label:'Details',type:'textarea'}
+    ],'SUBMIT REPORT',v=>{
+      const b=libraryBook(v.bookId.trim());
+      if(!b){feedback('Book ID not found.');return}
+      libraryState.incidents.unshift({
+        id:'LIB-CASE-'+Date.now().toString().slice(-6),bookId:b.id,title:b.title,borrower:v.borrower,
+        issue:v.issue,resolution:v.resolution,details:v.details,status:'Open',created:new Date().toISOString()
+      });
+      if(v.issue==='Damaged')b.status='Damaged';
+      if(v.issue==='Lost'||v.issue==='Missing from shelf')b.status='Missing';
+      librarySave('Book incident report created.');
+      libraryView(view);
+    }));
+    if(!libraryState.incidents.length)r.append(el('p','No damaged or lost book reports yet.','hint'));
+    libraryState.incidents.forEach(x=>{
+      const box=card(x.id+' · '+x.title,[
+        x.issue+' · '+x.status,
+        'Book · '+x.bookId,
+        'Reported by · '+(x.borrower||'Not specified'),
+        'Resolution · '+x.resolution,
+        x.details||'No additional details'
+      ]);
+      if(x.status==='Open')box.append(action('MARK RESOLVED',()=>{x.status='Resolved';x.resolved=new Date().toISOString();librarySave('Case resolved.');libraryView(view)},'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Acquisition Requests'){
+    r.append(card('ACQUISITION REQUESTS',[
+      'Recommend new books and track review or purchasing status.'
+    ]));
+    r.append(form([
+      {key:'title',label:'Requested title'},
+      {key:'author',label:'Author / creator'},
+      {key:'category',label:'Category'},
+      {key:'requestedBy',label:'Requested by'},
+      {key:'reason',label:'Reason / curriculum need',type:'textarea'}
+    ],'SUBMIT ACQUISITION REQUEST',v=>{
+      libraryState.acquisitions.unshift({
+        id:'ACQ-'+Date.now().toString().slice(-6),...v,status:'Pending',created:new Date().toISOString()
+      });
+      librarySave('Acquisition request submitted.');
+      libraryView(view);
+    }));
+    libraryState.acquisitions.forEach(a=>{
+      const box=card(a.id+' · '+a.title,[
+        (a.author||'Author not specified')+' · '+(a.category||'Uncategorized'),
+        'Requested by · '+a.requestedBy,
+        'Status · '+a.status,
+        a.reason||'No reason entered'
+      ]);
+      if(a.status==='Pending')box.append(
+        action('MARK FOR REVIEW',()=>{a.status='For Review';librarySave('Request moved to review.');libraryView(view)},'outline'),
+        action('APPROVE DEMO',()=>{a.status='Approved';librarySave('Acquisition request approved in demo.');libraryView(view)},'primary')
+      );
+      if(a.status==='Approved')box.append(action('MARK ORDERED',()=>{a.status='Ordered';librarySave('Acquisition marked ordered.');libraryView(view)},'outline'));
+      if(a.status==='Ordered')box.append(action('MARK RECEIVED',()=>{
+        a.status='Received';
+        const newId='BK-'+String(libraryState.books.length+1).padStart(3,'0');
+        libraryState.books.push({id:newId,title:a.title,author:a.author||'',category:a.category||'General',callNo:'NEW '+newId,shelf:'NEW',copies:1,available:1,status:'Available'});
+        librarySave('Book received and added to catalog.');
+        libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Reports & Export Center'){
+    const active=libraryState.loans.filter(l=>!l.returned);
+    const overdue=libraryOverdues();
+    const fines=overdue.reduce((n,l)=>n+libraryFine(l),0);
+    r.append(card('REPORTS & EXPORT CENTER',[
+      'Catalog titles · '+libraryState.books.length,
+      'Active loans · '+active.length,
+      'Overdue loans · '+overdue.length,
+      'Estimated overdue fines · ₱'+fines.toFixed(2),
+      'Open damaged / lost cases · '+libraryState.incidents.filter(x=>x.status==='Open').length
+    ]));
+    function csv(name,headers,rows){
+      const text=[headers,...rows].map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');
+      const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+      const a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    const actions=el('div',undefined,'items');
+    actions.append(
+      action('EXPORT CATALOG',()=>csv('library-catalog.csv',['ID','Title','Author','Category','Call No.','Shelf','Copies','Available','Status'],
+        libraryState.books.map(b=>[b.id,b.title,b.author,b.category,b.callNo,b.shelf,b.copies,b.available,b.status])),'item'),
+      action('EXPORT LOANS',()=>csv('library-loans.csv',['Loan ID','Borrower ID','Borrower','Book','Borrowed','Due','Returned','Status','Fine'],
+        libraryState.loans.map(l=>[l.id,l.borrowerId,l.borrower,l.title,l.borrowed,l.due,l.returned,l.status,libraryFine(l)])),'item'),
+      action('EXPORT HOLDS',()=>csv('library-holds.csv',['Hold ID','Borrower','Borrower ID','Book','Requested','Status'],
+        libraryState.holds.map(h=>[h.id,h.borrower,h.borrowerId,h.title,h.requested,h.status])),'item'),
+      action('EXPORT INCIDENTS',()=>csv('library-incidents.csv',['Case ID','Book ID','Title','Issue','Resolution','Status','Created'],
+        libraryState.incidents.map(x=>[x.id,x.bookId,x.title,x.issue,x.resolution,x.status,x.created])),'item'),
+      action('PRINT / SAVE CURRENT REPORT',()=>window.print(),'item')
+    );
+    r.append(actions);
+  }
+  syncFeatureHighlights();
+};
 const librarianModuleBase=openModule;
 openModule=function(name){
   if(activeRole==='Librarian'&&menus.Librarian.includes(name)){libraryView(name);return}
