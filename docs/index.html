@@ -402,6 +402,27 @@ const STAFF_KEY='school-orbit-staff-v1';
 const staffSeed=()=>({profile:{name:'Sam Reyes',department:'School Operations',contact:'staff@example.invalid'},tasks:[{id:'t1',title:'Prepare parent meeting room',due:'2026-09-28',priority:'High',status:'To do',note:'Arrange 30 seats and check the projector.',files:[]},{id:'t2',title:'Check classroom supplies',due:'2026-09-25',priority:'Normal',status:'In progress',note:'Check paper and markers in Grade 7 classrooms.',files:[]}],attendance:[],requests:[],messages:[],read:[],rsvp:{},activity:[],notifications:[]});
 let staff=staffSeed(),staffStorage=true;
 try{const saved=JSON.parse(localStorage.getItem(STAFF_KEY)||'null');if(saved&&saved.profile&&['tasks','attendance','requests','messages','read','activity'].every(k=>Array.isArray(saved[k])))staff={...staff,...saved}}catch(e){staffStorage=false}
+
+function ensureStaffSampleData(){
+  if(!staff.tasks.some(t=>t.id==='t-complete')) staff.tasks.push({id:'t-complete',title:'Submit weekly inventory summary',due:'2026-09-18',priority:'Normal',status:'Completed',note:'Submitted to Administration.',files:[],assignee:'STAFF-DEMO-001',review:'Accepted',reviewNote:'Complete and received.'});
+  if(!staff.attendance.length) staff.attendance.push(
+    {date:'2026-09-18',in:'2026-09-18T00:02:00.000Z',out:'2026-09-18T08:03:00.000Z'},
+    {date:'2026-09-19',in:'2026-09-19T00:10:00.000Z',out:'2026-09-19T08:01:00.000Z'}
+  );
+  if(!staff.requests.length) staff.requests.push(
+    {id:'REQ-DEMO-001',type:'Leave',category:'Vacation',start:'2026-10-05',end:'2026-10-05',details:'Family appointment.',status:'Approved',created:'2026-09-17T02:00:00.000Z',reviewed:'2026-09-17T06:00:00.000Z',remark:'Approved. Please coordinate pending duties.',staffId:'STAFF-DEMO-001'},
+    {id:'REQ-DEMO-002',type:'Supplies',item:'Printer paper',quantity:'2',details:'For office records printing.',status:'Pending',created:'2026-09-20T03:00:00.000Z',staffId:'STAFF-DEMO-001'}
+  );
+  if(!staff.messages.length) staff.messages.push({to:'Administration',text:'Good morning. The weekly inventory summary has been submitted.',date:'2026-09-18T07:30:00.000Z',reply:'Received. Thank you.'});
+  if(!staff.activity.length) staff.activity.push(
+    {date:'2026-09-20T03:00:00.000Z',text:'Demo supply request submitted'},
+    {date:'2026-09-18T08:05:00.000Z',text:'Task completed: Submit weekly inventory summary'},
+    {date:'2026-09-18T00:02:00.000Z',text:'Time in recorded'}
+  );
+  if(!Array.isArray(staff.notifications)) staff.notifications=[];
+}
+ensureStaffSampleData();
+
 function staffSave(note){if(note)staff.activity.unshift({date:new Date().toISOString(),text:note});staff.activity=staff.activity.slice(0,100);try{localStorage.setItem(STAFF_KEY,JSON.stringify(staff));staffStorage=true}catch(e){staffStorage=false}return staffStorage}
 function staffDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 function staffTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila'}):'—'}
@@ -468,13 +489,15 @@ if(view==='Notification Center'){const items=staffAlerts();if(!items.length)r.ap
 const connectedDone=staffDone;
 staffDone=function(view,message){if(message==='Sample office reply added')staffNotice('You have a new sample office reply.','Inbox');connectedDone(view,message)};
 // Only the current release is new. A feature is acknowledged when its panel closes.
-const FEATURE_RELEASE='staff-documents-2026-09-21-v1';
+const FEATURE_RELEASE='staff-all-modules-sample-data-2026-09-21-v1';
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
 try{const saved=JSON.parse(localStorage.getItem(FEATURE_SEEN_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))seenFeatures=saved}catch(e){}
 const openedNewFeatures=new Set();
 const featureId=(role,label)=>{
 if(role==='Staff'){
+if(['Dashboard','Today’s Overview','Activity History','My Schedule','Today’s Schedule','Duty Roster','Payroll','Payroll Summary','Payslip History','Overtime & Time Adjustments','Overtime Request','Undertime Request','Time Adjustment Status','My Documents','Document Center','Certificates & Memos','Tasks','My Tasks','Completed Tasks','Attendance','Time In / Out','Attendance Records','Correction Request','Calendar','School Events','Duty Schedule','Announcements','School Notices','Messages','Inbox','School Contacts','Leave & Requests','Apply for Leave','Supply Request','Request Tracker','My Profile & Help','My Profile','Quick Tour','Support Request'].includes(label))return 'Staff:sample-complete';
+
 if(['Attendance','Monthly Report','Correction Request'].includes(label))return 'Staff:attendance-reports';
 if(['Leave & Requests','Leave Balances','Apply for Leave'].includes(label))return 'Staff:leave-balances';
 if(['My Schedule','Today’s Schedule','Duty Roster'].includes(label))return 'Staff:my-schedule';
@@ -498,7 +521,7 @@ if(featureUnseen(id)){b.classList.add('new-feature');b.append(el('span','NEW','n
 }
 const banner=$('new-feature-banner');
 if(activeRole==='Staff'||activeRole==='Administrator'){
-const pending=Object.keys(activeRole==='Staff'?{'Staff:attendance-reports':1,'Staff:leave-balances':1,'Staff:my-schedule':1,'Staff:payroll':1,'Staff:time-adjustments':1,'Staff:documents':1}:{'Administrator:staff-operations':1}).some(featureUnseen);
+const pending=Object.keys(activeRole==='Staff'?{'Staff:sample-complete':1}:{'Administrator:staff-operations':1}).some(featureUnseen);
 banner.classList.toggle('features-unseen',pending);
 const title=banner.querySelector('strong');const titleText=activeRole==='Staff'?'CONNECTED STAFF WORKFLOWS':'STAFF OPERATIONS';if(title&&title.textContent!==(pending?'NEW · ':'')+titleText)title.textContent=(pending?'NEW · ':'')+titleText;
 }else{banner.hidden=true;banner.classList.remove('features-unseen')}
@@ -630,6 +653,114 @@ syncFeatureHighlights();
 return;
 }
 return staffViewBeforeSampleDocs(view);
+};
+
+
+const staffViewBeforeCompleteSamples=staffView;
+staffView=function(view){
+if(!['Payroll Summary','Payslip History','Overtime Request','Undertime Request','Time Adjustment Status','Document Center','Certificates & Memos'].includes(view)) return staffViewBeforeCompleteSamples(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff sample data');
+$('module-back').hidden=false;
+
+if(view==='Payroll Summary'){
+  r.append(card('Current Pay Period · SAMPLE',[
+    'September 1–15, 2026',
+    'Status: Processed',
+    'Basic Pay: ₱12,500.00',
+    'Allowances: ₱1,500.00',
+    'Deductions: ₱1,200.00',
+    'NET PAY: ₱12,800.00'
+  ]));
+  r.append(card('Sample Deductions',[
+    'SSS / GSIS: ₱500.00',
+    'PhilHealth: ₱350.00',
+    'Pag-IBIG: ₱200.00',
+    'Other deduction: ₱150.00'
+  ]));
+  r.append(el('p','All payroll figures are fictional demo data.','hint'));
+  r.append(action('Open Payslip History',()=>staffView('Payslip History'),'item'));
+}
+
+if(view==='Payslip History'){
+  r.append(table(['Pay Period','Gross','Deductions','Net Pay','Status'],[
+    ['Sep 1–15, 2026','₱14,000.00','₱1,200.00','₱12,800.00','Processed'],
+    ['Aug 16–31, 2026','₱14,000.00','₱1,150.00','₱12,850.00','Released'],
+    ['Aug 1–15, 2026','₱14,000.00','₱1,100.00','₱12,900.00','Released']
+  ]));
+  r.append(card('Sample Payslip Details',[
+    'Employee: Sam Reyes',
+    'Staff ID: STAFF-DEMO-001',
+    'Department: School Operations',
+    'Payment method: Payroll account · DEMO'
+  ]));
+  r.append(action('Print / Save PDF',()=>window.print(),'item'));
+}
+
+if(view==='Overtime Request'){
+  r.append(card('SAMPLE OVERTIME REQUEST',[
+    'Date: September 18, 2026',
+    'Time: 5:00 PM–7:00 PM',
+    'Reason: Parent meeting room preparation',
+    'Status: Approved · Demo'
+  ]));
+  r.append(form([
+    {key:'date',label:'Date',type:'date'},
+    {key:'start',label:'Overtime start',type:'time'},
+    {key:'end',label:'Overtime end',type:'time'},
+    {key:'details',label:'Reason / work performed',type:'textarea'}
+  ],'Submit another demo overtime request',v=>{
+    if(v.end<=v.start){feedback('End time must be after start time.');return}
+    staffRequest({...v,category:'Overtime'},'Overtime','Time Adjustment Status');
+  }));
+}
+
+if(view==='Undertime Request'){
+  r.append(card('SAMPLE UNDERTIME REQUEST',[
+    'Date: September 17, 2026',
+    'Expected time out: 3:30 PM',
+    'Reason: Medical appointment · fictional demo',
+    'Status: Approved · Demo'
+  ]));
+  r.append(form([
+    {key:'date',label:'Date',type:'date'},
+    {key:'time',label:'Expected time out',type:'time'},
+    {key:'details',label:'Reason',type:'textarea'}
+  ],'Submit another demo undertime request',v=>staffRequest({...v,category:'Undertime'},'Undertime','Time Adjustment Status')));
+}
+
+if(view==='Time Adjustment Status'){
+  const rows=staff.requests.filter(q=>['Overtime','Undertime'].includes(q.type));
+  r.append(table(['Type','Date','Time','Status'],[
+    ['Overtime','Sep 18, 2026','5:00–7:00 PM','Approved · SAMPLE'],
+    ['Undertime','Sep 17, 2026','3:30 PM out','Approved · SAMPLE']
+  ]));
+  rows.forEach(q=>r.append(card(q.type+' · '+q.id,[q.date||'—',q.start&&q.end?q.start+'–'+q.end:q.time||'',q.details||'',q.status])));
+}
+
+if(view==='Document Center'){
+  r.append(table(['Document','Category','Updated','Status'],[
+    ['Employment Information Sheet','HR','Sep 10, 2026','Available'],
+    ['Staff ID Record','HR','Sep 5, 2026','Available'],
+    ['Duty Assignment Notice','Operations','Sep 18, 2026','Available'],
+    ['Leave Approval Summary','HR','Sep 20, 2026','Available']
+  ]));
+  r.append(action('Open Sample Employment Information Sheet',()=>staffView('Employment Information Sheet'),'item'));
+  r.append(action('Open Certificates & Memos',()=>staffView('Certificates & Memos'),'item'));
+  r.append(el('p','Fictional files only. A live deployment should use authenticated document storage.','hint'));
+}
+
+if(view==='Certificates & Memos'){
+  r.append(table(['Item','Type','Date','Status'],[
+    ['Basic Safety Orientation','Certificate','Aug 28, 2026','Completed'],
+    ['Data Privacy Refresher','Certificate','Sep 3, 2026','Completed'],
+    ['Staff Meeting Memorandum','Memo','Sep 15, 2026','Unread sample'],
+    ['Parent Meeting Assignment','Memo','Sep 18, 2026','Read']
+  ]));
+  r.append(action('Open Sample Staff Meeting Memorandum',()=>staffView('Staff Meeting Memorandum'),'item'));
+  r.append(action('Print / Save PDF',()=>window.print(),'item'));
+}
+syncFeatureHighlights();
 };
 
 const adminBeforeCorrections=staffAdmin;
