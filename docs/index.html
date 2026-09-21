@@ -773,10 +773,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:digital-resources':'librarian-digital-resources-2026-09-21-v1',
-'Librarian:announcements':'librarian-announcements-2026-09-21-v1',
-'Librarian:popular-books':'librarian-popular-books-2026-09-21-v1',
-'Librarian:visit-log':'librarian-visit-log-2026-09-21-v1'
+'Librarian:reading-tracker':'librarian-reading-tracker-2026-09-21-v1',
+'Librarian:stock-recon':'librarian-stock-recon-2026-09-21-v1',
+'Librarian:barcode-isbn':'librarian-barcode-isbn-2026-09-21-v1',
+'Librarian:repair-queue':'librarian-repair-queue-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -812,10 +812,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Digital Resources')return 'Librarian:digital-resources';
-if(role==='Librarian'&&label==='Library Announcements')return 'Librarian:announcements';
-if(role==='Librarian'&&label==='Popular Books / Most Borrowed')return 'Librarian:popular-books';
-if(role==='Librarian'&&label==='Library Visit Log')return 'Librarian:visit-log';
+if(role==='Librarian'&&label==='Reading Program Tracker')return 'Librarian:reading-tracker';
+if(role==='Librarian'&&label==='Stock Reconciliation')return 'Librarian:stock-recon';
+if(role==='Librarian'&&label==='Barcode / ISBN Lookup')return 'Librarian:barcode-isbn';
+if(role==='Librarian'&&label==='Book Repair Queue')return 'Librarian:repair-queue';
 return null;
 };
 function featureUnseen(id){
@@ -2680,6 +2680,177 @@ libraryView=function(view){
     r.append(table(['Date','Time','Visitor','ID','Purpose'],
       rows.map(v=>[v.date,v.time,v.visitor,v.visitorId,v.purpose])
     ));
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian operations pack */
+for(const label of ['Reading Program Tracker','Stock Reconciliation','Barcode / ISBN Lookup','Book Repair Queue']){
+  if(!menus.Librarian.includes(label))menus.Librarian.push(label);
+}
+if(!Array.isArray(libraryState.readingPrograms))libraryState.readingPrograms=[
+  {id:'READ-001',name:'20 Books Challenge',participant:'Alex Santos',participantId:'STU-2026-001',goal:20,completed:6,status:'Active'},
+  {id:'READ-002',name:'Young Readers Month',participant:'Mika Reyes',participantId:'STU-2026-022',goal:10,completed:10,status:'Completed'}
+];
+if(!Array.isArray(libraryState.reconciliation))libraryState.reconciliation=[];
+if(!Array.isArray(libraryState.repairs))libraryState.repairs=[
+  {id:'REP-001',bookId:'BK-003',title:'Philippine History',issue:'Loose binding',priority:'Normal',status:'For Repair',reported:'2026-09-20'}
+];
+librarySave();
+
+const libraryViewOpsBase=libraryView;
+libraryView=function(view){
+  const special=['Reading Program Tracker','Stock Reconciliation','Barcode / ISBN Lookup','Book Repair Queue'];
+  if(!special.includes(view))return libraryViewOpsBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Reading Program Tracker'){
+    r.append(card('READING PROGRAM TRACKER',[
+      libraryState.readingPrograms.length+' participant record(s)',
+      'Track reading challenges, targets, progress, and completion.'
+    ]));
+    r.append(form([
+      {key:'name',label:'Program / challenge name'},
+      {key:'participant',label:'Participant name'},
+      {key:'participantId',label:'Student / participant ID'},
+      {key:'goal',label:'Book goal',type:'number'}
+    ],'ADD PARTICIPANT',v=>{
+      const goal=Math.max(1,Number(v.goal)||1);
+      libraryState.readingPrograms.unshift({
+        id:'READ-'+Date.now().toString().slice(-6),name:v.name,participant:v.participant,
+        participantId:v.participantId,goal,completed:0,status:'Active'
+      });
+      librarySave('Reading program participant added.');
+      libraryView(view);
+    }));
+    libraryState.readingPrograms.forEach(p=>{
+      const pct=Math.min(100,Math.round((Number(p.completed||0)/Number(p.goal||1))*100));
+      const box=card(p.name+' · '+p.participant,[
+        p.participantId,
+        'Progress · '+p.completed+' / '+p.goal+' books ('+pct+'%)',
+        'Status · '+p.status
+      ]);
+      if(p.status!=='Completed')box.append(action('ADD 1 BOOK',()=>{
+        p.completed=Math.min(Number(p.goal),Number(p.completed||0)+1);
+        if(p.completed>=p.goal)p.status='Completed';
+        librarySave('Reading progress updated.');
+        libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Stock Reconciliation'){
+    r.append(card('STOCK RECONCILIATION',[
+      'Compare catalog copies against a physical shelf count.',
+      'Use this after shelf checking or inventory counting.'
+    ]));
+    const results=el('div');
+    libraryState.books.forEach(b=>{
+      const box=card(b.title,[
+        'Catalog copies · '+b.copies,
+        'Available · '+b.available,
+        'Shelf · '+b.shelf
+      ]);
+      const wrap=el('div',undefined,'parent-form');
+      const lab=el('label','Physical count for '+b.id);
+      const input=el('input');input.type='number';input.min='0';input.value=String(b.copies);
+      lab.append(input);
+      wrap.append(lab,action('SAVE COUNT',()=>{
+        const physical=Math.max(0,Number(input.value)||0);
+        const variance=physical-Number(b.copies||0);
+        libraryState.reconciliation.unshift({
+          id:'REC-'+Date.now().toString().slice(-6),bookId:b.id,title:b.title,
+          catalog:Number(b.copies||0),physical,variance,date:staffDate()
+        });
+        librarySave('Stock count saved.');
+        libraryView(view);
+      },'outline'));
+      box.append(wrap);r.append(box);
+    });
+    if(libraryState.reconciliation.length){
+      r.append(el('h2','Recent Reconciliation Results'));
+      r.append(table(['Date','Book','Catalog','Physical','Variance'],
+        libraryState.reconciliation.slice(0,20).map(x=>[x.date,x.title,x.catalog,x.physical,x.variance])
+      ));
+    }
+  }
+
+  if(view==='Barcode / ISBN Lookup'){
+    r.append(card('BARCODE / ISBN LOOKUP',[
+      'Find a catalog record using a book ID, call number, or ISBN/barcode field.',
+      'Demo lookup uses the current catalog data.'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','Scan or enter code');
+    const input=el('input');input.placeholder='BK-001, SCI 500 SAN, ISBN...';
+    const result=el('div');
+    lab.append(input);
+    wrap.append(lab,action('LOOK UP BOOK',()=>{
+      const q=input.value.trim().toLowerCase();
+      result.replaceChildren();
+      if(!q){result.append(el('p','Enter a code to search.','hint'));return}
+      const b=libraryState.books.find(x=>
+        String(x.id).toLowerCase()===q ||
+        String(x.callNo||'').toLowerCase()===q ||
+        String(x.isbn||'').toLowerCase()===q ||
+        String(x.barcode||'').toLowerCase()===q
+      );
+      if(!b){result.append(card('NO MATCH',['No catalog record matches that code.']));return}
+      result.append(card('MATCH FOUND · '+b.title,[
+        'Book ID · '+b.id,
+        'Author · '+b.author,
+        'Call No. · '+b.callNo,
+        'Shelf · '+b.shelf,
+        'Available · '+b.available+' / '+b.copies,
+        'Status · '+b.status
+      ]));
+      result.append(action('OPEN BOOK CATALOG',()=>libraryView('Book Catalog'),'outline'));
+    },'primary'));
+    r.append(wrap,result);
+  }
+
+  if(view==='Book Repair Queue'){
+    r.append(card('BOOK REPAIR QUEUE',[
+      libraryState.repairs.filter(x=>x.status!=='Returned to Shelf').length+' item(s) currently in the repair workflow',
+      'Track damaged books from report through repair and return to shelf.'
+    ]));
+    r.append(form([
+      {key:'bookId',label:'Book ID'},
+      {key:'issue',label:'Repair issue'},
+      {key:'priority',label:'Priority',options:['Normal','High','Urgent']}
+    ],'ADD TO REPAIR QUEUE',v=>{
+      const b=libraryBook(v.bookId.trim());
+      if(!b){feedback('Book ID not found.');return}
+      libraryState.repairs.unshift({
+        id:'REP-'+Date.now().toString().slice(-6),bookId:b.id,title:b.title,
+        issue:v.issue,priority:v.priority,status:'For Repair',reported:staffDate()
+      });
+      b.status='Damaged';
+      librarySave('Book added to repair queue.');
+      libraryView(view);
+    }));
+    libraryState.repairs.forEach(x=>{
+      const box=card(x.id+' · '+x.title,[
+        'Book · '+x.bookId,
+        'Issue · '+x.issue,
+        'Priority · '+x.priority,
+        'Status · '+x.status,
+        'Reported · '+x.reported
+      ]);
+      if(x.status==='For Repair')box.append(action('START REPAIR',()=>{x.status='Repairing';librarySave('Repair started.');libraryView(view)},'primary'));
+      else if(x.status==='Repairing')box.append(action('MARK REPAIRED',()=>{x.status='Repaired';librarySave('Book marked repaired.');libraryView(view)},'primary'));
+      else if(x.status==='Repaired')box.append(action('RETURN TO SHELF',()=>{
+        x.status='Returned to Shelf';
+        const b=libraryBook(x.bookId);if(b)b.status='Available';
+        librarySave('Book returned to shelf.');
+        libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
   }
   syncFeatureHighlights();
 };
