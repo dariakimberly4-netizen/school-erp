@@ -791,10 +791,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:bulk-import':'librarian-bulk-import-2026-09-22-v1',
-'Librarian:notifications':'librarian-notifications-2026-09-22-v1',
-'Librarian:archive-books':'librarian-archive-books-2026-09-22-v1',
-'Librarian:feedback':'librarian-feedback-2026-09-22-v1'
+'Librarian:accession-register':'librarian-accession-register-2026-09-22-v1',
+'Librarian:budget-tracking':'librarian-budget-tracking-2026-09-22-v1',
+'Librarian:supplier-directory':'librarian-supplier-directory-2026-09-22-v1',
+'Librarian:year-end-stats':'librarian-year-end-stats-2026-09-22-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -830,10 +830,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Bulk Import Books')return 'Librarian:bulk-import';
-if(role==='Librarian'&&label==='Library Notifications')return 'Librarian:notifications';
-if(role==='Librarian'&&label==='Archive / Withdrawn Books')return 'Librarian:archive-books';
-if(role==='Librarian'&&label==='Library Feedback & Suggestions')return 'Librarian:feedback';
+if(role==='Librarian'&&label==='Accession Register')return 'Librarian:accession-register';
+if(role==='Librarian'&&label==='Budget & Acquisition Tracking')return 'Librarian:budget-tracking';
+if(role==='Librarian'&&label==='Publisher / Supplier Directory')return 'Librarian:supplier-directory';
+if(role==='Librarian'&&label==='Year-End Statistics Dashboard')return 'Librarian:year-end-stats';
 return null;
 };
 function featureUnseen(id){
@@ -870,9 +870,9 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Catalog & Collection'&&(featureUnseen('Librarian:bulk-import')||featureUnseen('Librarian:archive-books')))unseen=true;
-  if(label==='Library Dashboard'&&featureUnseen('Librarian:notifications'))unseen=true;
-  if(label==='Programs & Engagement'&&featureUnseen('Librarian:feedback'))unseen=true;
+  if(label==='Catalog & Collection'&&featureUnseen('Librarian:accession-register'))unseen=true;
+  if(label==='Acquisitions'&&(featureUnseen('Librarian:budget-tracking')||featureUnseen('Librarian:supplier-directory')))unseen=true;
+  if(label==='Reports'&&featureUnseen('Librarian:year-end-stats'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2881,13 +2881,13 @@ libraryView=function(view){
 /* Librarian main menu + submenu organization */
 const librarianGroups={
   'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications'],
-  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books'],
+  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books','Accession Register'],
   'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement'],
   'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
   'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review'],
   'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar','Library Feedback & Suggestions'],
-  'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests'],
-  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report']
+  'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests','Budget & Acquisition Tracking','Publisher / Supplier Directory'],
+  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard']
 };
 menus.Librarian=Object.keys(librarianGroups);
 
@@ -3374,6 +3374,178 @@ libraryView=function(view){
       if(x.status==='Reviewed')box.append(action('MARK ACTIONED',()=>{x.status='Actioned';librarySave('Feedback marked actioned.');libraryView(view)},'primary'));
       r.append(box);
     });
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian accession, budget, suppliers, and year-end statistics pack */
+if(!Array.isArray(libraryState.accessions))libraryState.accessions=[
+  {id:'ACC-0001',bookId:'BK-001',title:'Science Explorer',source:'Purchase',date:'2026-06-10',cost:650,supplier:'Metro Educational Books'},
+  {id:'ACC-0002',bookId:'BK-003',title:'Philippine History',source:'Donation',date:'2026-07-04',cost:0,supplier:'Community Donor'}
+];
+if(!libraryState.budget || typeof libraryState.budget!=='object')libraryState.budget={
+  schoolYear:'2026-2027',annual:75000,entries:[
+    {id:'BUD-001',date:'2026-06-15',description:'Science reference books',amount:12500,type:'Purchase',status:'Paid'},
+    {id:'BUD-002',date:'2026-08-03',description:'Reading program materials',amount:6800,type:'Purchase',status:'Committed'}
+  ]
+};
+if(!Array.isArray(libraryState.suppliers))libraryState.suppliers=[
+  {id:'SUP-001',name:'Metro Educational Books',contact:'0917 555 0101',email:'sales@example.edu',category:'Books',status:'Preferred'},
+  {id:'SUP-002',name:'Learning Resources Trading',contact:'0918 555 0144',email:'orders@example.edu',category:'Books & Supplies',status:'Active'}
+];
+librarySave();
+
+const libraryViewFinanceBase=libraryView;
+libraryView=function(view){
+  const special=['Accession Register','Budget & Acquisition Tracking','Publisher / Supplier Directory','Year-End Statistics Dashboard'];
+  if(!special.includes(view))return libraryViewFinanceBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Accession Register'){
+    r.append(card('ACCESSION REGISTER',[
+      libraryState.accessions.length+' accession record(s)',
+      'Track when an item entered the collection, its source, supplier/donor, and cost.'
+    ]));
+    r.append(form([
+      {key:'bookId',label:'Book ID'},
+      {key:'source',label:'Source',options:['Purchase','Donation','Transfer','Replacement','Other']},
+      {key:'date',label:'Date received',type:'date'},
+      {key:'cost',label:'Cost (₱)',type:'number'},
+      {key:'supplier',label:'Supplier / donor'}
+    ],'ADD ACCESSION',v=>{
+      const b=libraryBook(v.bookId.trim());
+      if(!b){feedback('Book ID not found.');return}
+      libraryState.accessions.unshift({
+        id:'ACC-'+String(libraryState.accessions.length+1).padStart(4,'0'),
+        bookId:b.id,title:b.title,source:v.source,date:v.date,
+        cost:Math.max(0,Number(v.cost)||0),supplier:v.supplier||''
+      });
+      librarySave('Accession record added.');
+      libraryView(view);
+    }));
+    r.append(table(
+      ['Accession No.','Book ID','Title','Source','Date','Cost','Supplier / Donor'],
+      libraryState.accessions.map(x=>[
+        x.id,x.bookId,x.title,x.source,x.date,'₱'+Number(x.cost||0).toFixed(2),x.supplier||'—'
+      ])
+    ));
+  }
+
+  if(view==='Budget & Acquisition Tracking'){
+    const entries=libraryState.budget.entries||[];
+    const spent=entries.filter(x=>x.status==='Paid').reduce((n,x)=>n+Number(x.amount||0),0);
+    const committed=entries.filter(x=>x.status==='Committed').reduce((n,x)=>n+Number(x.amount||0),0);
+    const remaining=Math.max(0,Number(libraryState.budget.annual||0)-spent-committed);
+    r.append(card('LIBRARY BUDGET · '+libraryState.budget.schoolYear,[
+      'Annual budget · ₱'+Number(libraryState.budget.annual||0).toFixed(2),
+      'Paid · ₱'+spent.toFixed(2),
+      'Committed · ₱'+committed.toFixed(2),
+      'Available · ₱'+remaining.toFixed(2)
+    ]));
+    r.append(form([
+      {key:'description',label:'Purchase / acquisition description'},
+      {key:'amount',label:'Amount (₱)',type:'number'},
+      {key:'type',label:'Type',options:['Purchase','Subscription','Supplies','Equipment','Other']},
+      {key:'status',label:'Status',options:['Committed','Paid']},
+      {key:'date',label:'Date',type:'date'}
+    ],'ADD BUDGET ENTRY',v=>{
+      const amount=Math.max(0,Number(v.amount)||0);
+      if(v.status==='Committed'&&amount>remaining){feedback('Amount exceeds the available demo budget.');return}
+      libraryState.budget.entries.unshift({
+        id:'BUD-'+Date.now().toString().slice(-6),description:v.description,amount,
+        type:v.type,status:v.status,date:v.date
+      });
+      librarySave('Budget entry added.');
+      libraryView(view);
+    }));
+    r.append(table(
+      ['Date','Description','Type','Status','Amount'],
+      entries.map(x=>[x.date,x.description,x.type,x.status,'₱'+Number(x.amount||0).toFixed(2)])
+    ));
+  }
+
+  if(view==='Publisher / Supplier Directory'){
+    r.append(card('PUBLISHER / SUPPLIER DIRECTORY',[
+      libraryState.suppliers.length+' supplier record(s)',
+      'Maintain demo contacts for books, materials, subscriptions, and library supplies.'
+    ]));
+    r.append(form([
+      {key:'name',label:'Publisher / supplier name'},
+      {key:'contact',label:'Contact number'},
+      {key:'email',label:'Email'},
+      {key:'category',label:'Category',options:['Books','Books & Supplies','Periodicals','Digital Resources','Equipment','Other']},
+      {key:'status',label:'Status',options:['Preferred','Active','Inactive']}
+    ],'ADD SUPPLIER',v=>{
+      libraryState.suppliers.unshift({id:'SUP-'+Date.now().toString().slice(-6),...v});
+      librarySave('Supplier added.');
+      libraryView(view);
+    }));
+    libraryState.suppliers.forEach(s=>{
+      const box=card(s.name,[
+        'Category · '+s.category,
+        'Contact · '+(s.contact||'—'),
+        'Email · '+(s.email||'—'),
+        'Status · '+s.status
+      ]);
+      if(s.status!=='Inactive')box.append(action('MARK INACTIVE',()=>{
+        s.status='Inactive';librarySave('Supplier marked inactive.');libraryView(view);
+      },'outline'));
+      else box.append(action('REACTIVATE',()=>{
+        s.status='Active';librarySave('Supplier reactivated.');libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Year-End Statistics Dashboard'){
+    const loans=libraryState.loans||[];
+    const returned=loans.filter(x=>x.returned).length;
+    const active=loans.filter(x=>!x.returned).length;
+    const overdue=libraryOverdues().length;
+    const visits=(libraryState.visits||[]).length;
+    const donations=(libraryState.donations||[]).reduce((n,x)=>n+Number(x.copies||0),0);
+    const acquisitions=(libraryState.acquisitions||[]).length;
+    const feedback=(libraryState.feedback||[]).length;
+    const programs=(libraryState.readingPrograms||[]).length;
+    const titles=libraryState.books.length;
+    const copies=libraryState.books.reduce((n,b)=>n+Number(b.copies||0),0);
+    const available=libraryState.books.reduce((n,b)=>n+Number(b.available||0),0);
+    const fines=loans.reduce((n,l)=>n+Number(l.fine||0),0);
+    r.append(card('YEAR-END STATISTICS DASHBOARD',[
+      'Collection titles · '+titles,
+      'Total copies · '+copies,
+      'Available copies · '+available,
+      'Loan transactions · '+loans.length,
+      'Returned · '+returned+' · Active · '+active+' · Overdue · '+overdue,
+      'Library visits · '+visits,
+      'Donation copies recorded · '+donations,
+      'Acquisition requests · '+acquisitions,
+      'Reading program records · '+programs,
+      'Feedback / suggestions · '+feedback,
+      'Recorded fines · ₱'+fines.toFixed(2)
+    ]));
+    r.append(table(
+      ['Metric','Total'],
+      [
+        ['Collection Titles',titles],
+        ['Total Copies',copies],
+        ['Available Copies',available],
+        ['Loan Transactions',loans.length],
+        ['Returned Loans',returned],
+        ['Active Loans',active],
+        ['Overdue Loans',overdue],
+        ['Library Visits',visits],
+        ['Donation Copies',donations],
+        ['Acquisition Requests',acquisitions],
+        ['Reading Program Records',programs],
+        ['Feedback / Suggestions',feedback],
+        ['Recorded Fines','₱'+fines.toFixed(2)]
+      ]
+    ));
+    r.append(action('PRINT / SAVE YEAR-END SUMMARY',()=>window.print(),'outline'));
   }
   syncFeatureHighlights();
 };
