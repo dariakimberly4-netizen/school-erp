@@ -658,7 +658,11 @@ const FEATURE_RELEASES={
 'Staff:notification-settings':'staff-notification-settings-2026-09-21-v1',
 'Staff:leave-calendar':'staff-leave-calendar-2026-09-21-v1',
 'Staff:department-dashboard':'staff-department-dashboard-2026-09-21-v1',
-'Staff:onboarding':'staff-onboarding-2026-09-21-v1'
+'Staff:onboarding':'staff-onboarding-2026-09-21-v1',
+'Staff:offboarding':'staff-offboarding-clearance-2026-09-21-v1',
+'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
+'Staff:export-center':'staff-export-center-2026-09-21-v1',
+'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -684,6 +688,10 @@ if(role==='Staff'&&label==='Notification Settings')return 'Staff:notification-se
 if(role==='Staff'&&label==='My Leave Calendar')return 'Staff:leave-calendar';
 if(role==='Staff'&&label==='Department Dashboard')return 'Staff:department-dashboard';
 if(role==='Staff'&&label==='Staff Onboarding')return 'Staff:onboarding';
+if(role==='Staff'&&label==='Offboarding / Clearance')return 'Staff:offboarding';
+if(role==='Staff'&&label==='Policy Library')return 'Staff:policy-library';
+if(role==='Staff'&&label==='Export Center')return 'Staff:export-center';
+if(role==='Staff'&&label==='Team Leave / Availability')return 'Staff:team-availability';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -712,6 +720,10 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='Leave & Requests'&&featureUnseen('Staff:leave-calendar'))unseen=true;
   if(label==='Dashboard'&&featureUnseen('Staff:department-dashboard'))unseen=true;
   if(label==='Training & Seminars'&&featureUnseen('Staff:onboarding'))unseen=true;
+  if(label==='My Profile & Help'&&featureUnseen('Staff:offboarding'))unseen=true;
+  if(label==='My Documents'&&featureUnseen('Staff:policy-library'))unseen=true;
+  if(label==='Reports'&&featureUnseen('Staff:export-center'))unseen=true;
+  if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -1710,6 +1722,135 @@ if(view==='Staff Onboarding'){
   r.append(action('OPEN MY DOCUMENTS',()=>openModule('My Documents'),'outline'));
   r.append(action('OPEN TRAINING DASHBOARD',()=>staffView('Training Dashboard'),'outline'));
   r.append(action('OPEN EMERGENCY CENTER',()=>staffView('Emergency Center'),'outline'));
+}
+syncFeatureHighlights();
+};
+
+
+/* Staff final completion pack: offboarding, policy library, export center, team availability */
+if(!Array.isArray(staff.clearanceChecklist))staff.clearanceChecklist=[
+  {id:'CL-1',label:'Return issued equipment',done:false},
+  {id:'CL-2',label:'Clear pending work orders / assigned tasks',done:false},
+  {id:'CL-3',label:'Submit final reports and records',done:false},
+  {id:'CL-4',label:'HR / personnel clearance',done:false},
+  {id:'CL-5',label:'Finance / payroll clearance',done:false},
+  {id:'CL-6',label:'Account / access deactivation confirmation',done:false}
+];
+
+if(!staffMenus['My Profile & Help'].includes('Offboarding / Clearance'))staffMenus['My Profile & Help'].push('Offboarding / Clearance');
+if(!staffMenus['My Documents'].includes('Policy Library'))staffMenus['My Documents'].push('Policy Library');
+if(!staffMenus.Reports.includes('Export Center'))staffMenus.Reports.push('Export Center');
+if(!staffMenus['My Schedule'].includes('Team Leave / Availability'))staffMenus['My Schedule'].push('Team Leave / Availability');
+menus.Staff=Object.keys(staffMenus);
+
+const staffViewBeforeFinalPack=staffView;
+staffView=function(view){
+if(!['Offboarding / Clearance','Policy Library','Export Center','Team Leave / Availability'].includes(view))return staffViewBeforeFinalPack(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff workspace · Demo');
+$('module-back').hidden=false;
+
+if(view==='Offboarding / Clearance'){
+  const done=staff.clearanceChecklist.filter(x=>x.done).length;
+  r.append(card('OFFBOARDING / CLEARANCE',[
+    done+' of '+staff.clearanceChecklist.length+' clearance items completed',
+    'Use this workflow when a staff member is separating, transferring, or ending an assignment.',
+    'Demo workflow only.'
+  ]));
+  staff.clearanceChecklist.forEach(item=>{
+    const box=card(item.done?'CLEARED':'PENDING',[item.label]);
+    if(!item.done)box.append(action('MARK CLEARED',()=>{
+      item.done=true;
+      staffDone('Offboarding / Clearance','Clearance completed: '+item.label);
+    },'primary'));
+    else box.append(el('p','✓ Cleared','status'));
+    r.append(box);
+  });
+  r.append(card('FINAL STATUS',[
+    done===staff.clearanceChecklist.length?'Ready for final review':'Clearance still in progress',
+    'Final account deactivation should only be completed by an authorized administrator.'
+  ]));
+  r.append(action('OPEN EQUIPMENT ACCOUNTABILITY',()=>staffView('Equipment Accountability'),'outline'));
+  r.append(action('OPEN AUDIT TRAIL',()=>staffView('Audit Trail'),'outline'));
+}
+
+if(view==='Policy Library'){
+  const policies=[
+    ['Staff Handbook','HR / General','Current','Work rules, conduct, attendance, and staff responsibilities.'],
+    ['Data Privacy Policy','Privacy','Current','Handling of school, student, parent, and employee information.'],
+    ['Emergency & Safety Procedures','Safety','Current','Evacuation, earthquake, fire, medical, and security procedures.'],
+    ['Leave & Attendance Policy','HR','Current','Leave requests, attendance corrections, undertime, and overtime rules.'],
+    ['IT Acceptable Use Policy','IT','Current','Use of school devices, accounts, internet, and systems.'],
+    ['Equipment Accountability Policy','Operations','Current','Issued assets, returns, loss, damage, and repair reporting.']
+  ];
+  r.append(card('POLICY LIBRARY',[
+    policies.length+' sample policies available',
+    'Central reference for staff rules, procedures, and forms.'
+  ]));
+  policies.forEach(p=>{
+    const box=card(p[0],[p[1]+' · '+p[2],p[3]]);
+    box.append(action('OPEN SUMMARY',()=>feedback(p[0]+' · Demo summary opened.'),'outline'));
+    r.append(box);
+  });
+  r.append(card('ACKNOWLEDGEMENT NOTE',[
+    'A production system can require staff to acknowledge new or revised policies and store the timestamp in the audit trail.'
+  ]));
+}
+
+if(view==='Export Center'){
+  r.append(card('EXPORT CENTER',[
+    'Create downloadable CSV files from Staff demo records.',
+    'Exports contain only the fictional browser-local demo data currently visible in this system.'
+  ]));
+  function downloadCSV(name,headers,rows){
+    const csv=[headers,...rows].map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  const box=el('div',undefined,'items');
+  box.append(
+    action('EXPORT ATTENDANCE',()=>downloadCSV('staff-attendance.csv',['Date','Time In','Time Out'],staff.attendance.map(a=>[a.date,staffTime(a.in),staffTime(a.out)])),'item'),
+    action('EXPORT REQUESTS',()=>downloadCSV('staff-requests.csv',['ID','Type','Status','Date / Start','End','Details'],staff.requests.map(q=>[q.id,q.type,q.status,q.date||q.start||'',q.end||'',q.details||''])),'item'),
+    action('EXPORT WORK ORDERS',()=>downloadCSV('staff-work-orders.csv',['ID','Title','Location','Priority','Assigned','Status'],(staff.workOrders||[]).map(w=>[w.id,w.title,w.location,w.priority,w.assigned,w.status])),'item'),
+    action('EXPORT HELP DESK',()=>downloadCSV('staff-help-desk.csv',['ID','Category','Subject','Priority','Status','Created'],(staff.helpTickets||[]).map(t=>[t.id,t.category,t.subject,t.priority,t.status,staffTime(t.created)])),'item'),
+    action('PRINT / SAVE CURRENT REPORT',()=>window.print(),'item')
+  );
+  r.append(box);
+  r.append(card('AVAILABLE EXPORTS',[
+    'Attendance · CSV',
+    'Requests & approvals · CSV',
+    'Work orders · CSV',
+    'Help desk tickets · CSV',
+    'Current screen · Print / Save PDF'
+  ]));
+}
+
+if(view==='Team Leave / Availability'){
+  const today=staffDate();
+  const team=[
+    {name:'Sam Reyes',department:'School Operations',status:'Available',detail:'On site'},
+    {name:'Maria Santos',department:'Registrar',status:'Available',detail:'On site'},
+    {name:'Ana Cruz',department:'Library',status:'On Leave',detail:'Approved leave · Sep 21'},
+    {name:'Leo Mendoza',department:'Facilities',status:'Assigned Elsewhere',detail:'Facilities inspection'},
+    {name:'Mia Flores',department:'Student Services',status:'Available',detail:'On site'}
+  ];
+  r.append(card('TEAM LEAVE / AVAILABILITY · '+today,[
+    team.filter(x=>x.status==='Available').length+' available',
+    team.filter(x=>x.status==='On Leave').length+' on leave',
+    team.filter(x=>x.status==='Assigned Elsewhere').length+' assigned elsewhere',
+    'Sample team availability for duty planning.'
+  ]));
+  r.append(table(['Staff','Department','Availability','Details'],
+    team.map(x=>[x.name,x.department,x.status,x.detail])
+  ));
+  r.append(card('UPCOMING LEAVE',[
+    'Ana Cruz · Approved · Sep 21',
+    'Sam Reyes · Approved Vacation Leave · Oct 5',
+    'No other sample approved leave in the next 14 days.'
+  ]));
+  r.append(action('OPEN MY LEAVE CALENDAR',()=>staffView('My Leave Calendar'),'outline'));
+  r.append(action('OPEN STAFF DIRECTORY',()=>staffView('Staff Directory'),'outline'));
+  r.append(action('OPEN DUTY ROSTER',()=>staffView('Duty Roster'),'outline'));
 }
 syncFeatureHighlights();
 };
