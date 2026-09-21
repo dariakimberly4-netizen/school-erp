@@ -735,7 +735,13 @@ const FEATURE_RELEASES={
 'Staff:offboarding':'staff-offboarding-clearance-2026-09-21-v1',
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
-'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1'
+'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
+'Librarian:dashboard':'librarian-dashboard-2026-09-21-v1',
+'Librarian:catalog':'librarian-catalog-2026-09-21-v1',
+'Librarian:borrow-return':'librarian-borrow-return-2026-09-21-v1',
+'Librarian:overdue-fines':'librarian-overdue-fines-2026-09-21-v1',
+'Librarian:inventory-audit':'librarian-inventory-audit-2026-09-21-v1',
+'Librarian:clearance':'librarian-clearance-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -765,6 +771,12 @@ if(role==='Staff'&&label==='Offboarding / Clearance')return 'Staff:offboarding';
 if(role==='Staff'&&label==='Policy Library')return 'Staff:policy-library';
 if(role==='Staff'&&label==='Export Center')return 'Staff:export-center';
 if(role==='Staff'&&label==='Team Leave / Availability')return 'Staff:team-availability';
+if(role==='Librarian'&&label==='Library Dashboard')return 'Librarian:dashboard';
+if(role==='Librarian'&&label==='Book Catalog')return 'Librarian:catalog';
+if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return';
+if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
+if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
+if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -1928,6 +1940,263 @@ if(view==='Team Leave / Availability'){
 syncFeatureHighlights();
 };
 
+
+/* LIBRARIAN WORKSPACE */
+menus.Librarian=[
+  'Library Dashboard',
+  'Book Catalog',
+  'Borrow / Return',
+  'Overdue & Fines',
+  'Inventory & Shelf Audit',
+  'Library Clearance'
+];
+
+const LIBRARY_KEY='school-orbit-library-v1';
+let libraryState;
+try{libraryState=JSON.parse(localStorage.getItem(LIBRARY_KEY)||'null')}catch(e){}
+if(!libraryState||typeof libraryState!=='object'){
+  libraryState={
+    books:[
+      {id:'BK-001',title:'Science Explorer',author:'M. Santos',category:'Science',callNo:'SCI 500 SAN',copies:3,available:2,status:'Available',shelf:'A-01'},
+      {id:'BK-002',title:'English Reader 7',author:'R. Cruz',category:'English',callNo:'ENG 420 CRU',copies:4,available:3,status:'Available',shelf:'B-03'},
+      {id:'BK-003',title:'Philippine History',author:'L. Reyes',category:'History',callNo:'HIS 959 REY',copies:2,available:1,status:'Available',shelf:'C-02'},
+      {id:'BK-004',title:'Mathematics Essentials',author:'A. Flores',category:'Mathematics',callNo:'MAT 510 FLO',copies:3,available:3,status:'Available',shelf:'A-06'},
+      {id:'BK-005',title:'Young Readers Collection',author:'Various',category:'Reading',callNo:'REA 800 VAR',copies:5,available:5,status:'Available',shelf:'D-01'}
+    ],
+    loans:[
+      {id:'LN-1001',borrowerId:'STU-2026-001',borrower:'Alex Santos',bookId:'BK-001',title:'Science Explorer',borrowed:'2026-09-14',due:'2026-09-28',returned:'',status:'On Loan',fine:0},
+      {id:'LN-1002',borrowerId:'STU-2026-014',borrower:'Jamie Dela Cruz',bookId:'BK-003',title:'Philippine History',borrowed:'2026-09-01',due:'2026-09-15',returned:'',status:'Overdue',fine:30},
+      {id:'LN-1003',borrowerId:'STU-2026-022',borrower:'Mika Reyes',bookId:'BK-002',title:'English Reader 7',borrowed:'2026-09-05',due:'2026-09-19',returned:'2026-09-18',status:'Returned',fine:0}
+    ],
+    audit:[
+      {bookId:'BK-001',result:'Found',condition:'Good',checked:'2026-09-20'},
+      {bookId:'BK-003',result:'Found',condition:'Good',checked:'2026-09-20'}
+    ]
+  };
+}
+function librarySave(message){
+  try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(libraryState));if(message)feedback(message);return true}catch(e){if(message)feedback(message+' (session only)');return false}
+}
+function libraryBook(id){return libraryState.books.find(b=>b.id===id)}
+function libraryOverdues(){
+  const today=staffDate();
+  return libraryState.loans.filter(l=>!l.returned&&l.due<today);
+}
+function libraryFine(l){
+  if(l.returned||l.due>=staffDate())return Number(l.fine||0);
+  const a=new Date(l.due+'T00:00:00+08:00'),b=new Date(staffDate()+'T00:00:00+08:00');
+  return Math.max(Number(l.fine||0),Math.ceil((b-a)/86400000)*5);
+}
+function libraryView(view){
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Library Dashboard'){
+    const overdue=libraryOverdues();
+    const active=libraryState.loans.filter(l=>!l.returned);
+    const available=libraryState.books.reduce((n,b)=>n+Number(b.available||0),0);
+    r.append(card('LIBRARY DASHBOARD',[
+      'Catalog titles · '+libraryState.books.length,
+      'Available copies · '+available,
+      'Books currently on loan · '+active.length,
+      'Overdue loans · '+overdue.length,
+      'Today’s circulation · '+libraryState.loans.filter(l=>l.borrowed===staffDate()||l.returned===staffDate()).length
+    ]));
+    const grid=el('div',undefined,'today-grid');
+    const circulation=card('CIRCULATION TODAY',[
+      active.length+' active loan(s)',
+      overdue.length+' overdue loan(s)'
+    ]);
+    circulation.append(action('OPEN BORROW / RETURN',()=>libraryView('Borrow / Return'),'outline'));
+    grid.append(circulation);
+    const alerts=card('OVERDUE ALERTS',[
+      overdue.length?overdue[0].borrower+' · '+overdue[0].title:'No overdue sample loans',
+      'Estimated fines · ₱'+overdue.reduce((n,l)=>n+libraryFine(l),0).toFixed(2)
+    ]);
+    alerts.append(action('OPEN OVERDUE & FINES',()=>libraryView('Overdue & Fines'),'outline'));
+    grid.append(alerts);
+    const inventory=card('INVENTORY STATUS',[
+      libraryState.audit.length+' title(s) checked in latest sample audit',
+      libraryState.books.length-libraryState.audit.length+' title(s) not yet checked'
+    ]);
+    inventory.append(action('OPEN SHELF AUDIT',()=>libraryView('Inventory & Shelf Audit'),'outline'));
+    grid.append(inventory);
+    r.append(grid);
+  }
+
+  if(view==='Book Catalog'){
+    r.append(card('BOOK CATALOG',[
+      libraryState.books.length+' catalog title(s)',
+      'Search the demo catalog or add a new book record.'
+    ]));
+    const searchWrap=el('div',undefined,'parent-form');
+    const lab=el('label','Search catalog');
+    const input=el('input');input.type='search';input.placeholder='Title, author, category, call number...';
+    const results=el('div');
+    lab.append(input);searchWrap.append(lab);r.append(searchWrap,results);
+    const draw=()=>{
+      const q=input.value.trim().toLowerCase();
+      const books=libraryState.books.filter(b=>!q||(b.title+' '+b.author+' '+b.category+' '+b.callNo+' '+b.shelf).toLowerCase().includes(q));
+      results.replaceChildren(table(['ID','Title','Author','Category','Call No.','Shelf','Available'],
+        books.map(b=>[b.id,b.title,b.author,b.category,b.callNo,b.shelf,b.available+' / '+b.copies])
+      ));
+    };
+    input.oninput=draw;draw();
+    r.append(form([
+      {key:'title',label:'Book title'},
+      {key:'author',label:'Author'},
+      {key:'category',label:'Category'},
+      {key:'callNo',label:'Call number'},
+      {key:'shelf',label:'Shelf location'},
+      {key:'copies',label:'Number of copies',type:'number'}
+    ],'ADD DEMO BOOK',v=>{
+      const copies=Math.max(1,Number(v.copies)||1);
+      libraryState.books.push({
+        id:'BK-'+String(libraryState.books.length+1).padStart(3,'0'),
+        title:v.title,author:v.author,category:v.category,callNo:v.callNo,shelf:v.shelf,
+        copies,available:copies,status:'Available'
+      });
+      librarySave('Book added to demo catalog.');
+      libraryView('Book Catalog');
+    }));
+  }
+
+  if(view==='Borrow / Return'){
+    r.append(card('BORROW / RETURN',[
+      'Issue a book to a borrower or process a return.',
+      'Transactions update availability in this browser demo.'
+    ]));
+    const availableBooks=libraryState.books.filter(b=>b.available>0);
+    const f=el('form',undefined,'parent-form');
+    const borrower=el('input');borrower.required=true;borrower.placeholder='Student / staff name';
+    const borrowerId=el('input');borrowerId.required=true;borrowerId.placeholder='Borrower ID';
+    const select=el('select');
+    availableBooks.forEach(b=>{const o=el('option',b.title+' · '+b.available+' available');o.value=b.id;select.append(o)});
+    const due=el('input');due.type='date';due.required=true;
+    const l1=el('label','Borrower name');l1.append(borrower);
+    const l2=el('label','Borrower ID');l2.append(borrowerId);
+    const l3=el('label','Book');l3.append(select);
+    const l4=el('label','Due date');l4.append(due);
+    const btn=action('ISSUE BOOK',()=>{},'primary');btn.type='submit';
+    f.append(l1,l2,l3,l4,btn);
+    f.onsubmit=e=>{
+      e.preventDefault();
+      const b=libraryBook(select.value);
+      if(!b||b.available<1){feedback('No available copy.');return}
+      b.available--;
+      libraryState.loans.unshift({
+        id:'LN-'+Date.now().toString().slice(-6),borrowerId:borrowerId.value.trim(),borrower:borrower.value.trim(),
+        bookId:b.id,title:b.title,borrowed:staffDate(),due:due.value,returned:'',status:'On Loan',fine:0
+      });
+      librarySave('Book issued successfully.');
+      libraryView('Borrow / Return');
+    };
+    r.append(f);
+    r.append(el('h2','Active Loans'));
+    const active=libraryState.loans.filter(l=>!l.returned);
+    if(!active.length)r.append(el('p','No active loans.','hint'));
+    active.forEach(l=>{
+      const box=card(l.borrower+' · '+l.title,[
+        l.borrowerId+' · Loan '+l.id,
+        'Borrowed · '+l.borrowed,
+        'Due · '+l.due,
+        'Status · '+(l.due<staffDate()?'Overdue':l.status)
+      ]);
+      box.append(action('PROCESS RETURN',()=>{
+        l.returned=staffDate();l.status='Returned';l.fine=libraryFine(l);
+        const b=libraryBook(l.bookId);if(b)b.available=Math.min(b.copies,b.available+1);
+        librarySave('Return processed for '+l.title+'.');
+        libraryView('Borrow / Return');
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Overdue & Fines'){
+    const overdue=libraryOverdues();
+    r.append(card('OVERDUE & FINES',[
+      overdue.length+' overdue loan(s)',
+      'Demo fine rule · ₱5 per overdue day.',
+      'Authorized staff can record payment or waive a demo fine.'
+    ]));
+    if(!overdue.length)r.append(el('p','No overdue loans.','hint'));
+    overdue.forEach(l=>{
+      l.status='Overdue';l.fine=libraryFine(l);
+      const box=card(l.borrower+' · '+l.title,[
+        l.borrowerId+' · '+l.id,
+        'Due · '+l.due,
+        'Current fine · ₱'+Number(l.fine).toFixed(2)
+      ]);
+      box.append(
+        action('MARK FINE PAID',()=>{l.fine=0;l.fineStatus='Paid';librarySave('Fine marked paid.');libraryView('Overdue & Fines')},'primary'),
+        action('WAIVE FINE',()=>{l.fine=0;l.fineStatus='Waived';librarySave('Fine waived in demo.');libraryView('Overdue & Fines')},'outline')
+      );
+      r.append(box);
+    });
+  }
+
+  if(view==='Inventory & Shelf Audit'){
+    r.append(card('INVENTORY & SHELF AUDIT',[
+      libraryState.books.length+' catalog title(s)',
+      'Record whether each title is found, misplaced, missing, or damaged.'
+    ]));
+    libraryState.books.forEach(b=>{
+      const latest=[...libraryState.audit].reverse().find(a=>a.bookId===b.id);
+      const box=card(b.id+' · '+b.title,[
+        'Shelf · '+b.shelf,
+        'Copies · '+b.copies+' · Available '+b.available,
+        latest?('Last audit · '+latest.checked+' · '+latest.result+' · '+latest.condition):'Not yet audited'
+      ]);
+      const sel=el('select');['Found','Misplaced','Missing','Damaged'].forEach(x=>{const o=el('option',x);o.value=x;sel.append(o)});
+      const condition=el('select');['Good','Fair','Needs Repair','Replace'].forEach(x=>{const o=el('option',x);o.value=x;condition.append(o)});
+      box.append(sel,condition,action('SAVE AUDIT',()=>{
+        libraryState.audit.push({bookId:b.id,result:sel.value,condition:condition.value,checked:staffDate()});
+        if(sel.value==='Missing')b.status='Missing';else if(sel.value==='Damaged')b.status='Damaged';else b.status='Available';
+        librarySave('Shelf audit saved for '+b.title+'.');
+        libraryView('Inventory & Shelf Audit');
+      },'outline'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Library Clearance'){
+    r.append(card('LIBRARY CLEARANCE',[
+      'Check whether a student or staff member has active loans or unpaid library fines.',
+      'Clearance is blocked while obligations remain.'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','Borrower name or ID');
+    const input=el('input');input.placeholder='Example: Alex Santos or STU-2026-001';
+    const result=el('div');
+    lab.append(input);
+    wrap.append(lab,action('CHECK CLEARANCE',()=>{
+      const q=input.value.trim().toLowerCase();
+      result.replaceChildren();
+      if(!q){result.append(el('p','Enter a borrower name or ID.','hint'));return}
+      const loans=libraryState.loans.filter(l=>(l.borrower+' '+l.borrowerId).toLowerCase().includes(q));
+      const active=loans.filter(l=>!l.returned);
+      const fines=loans.reduce((n,l)=>n+Number(l.fine||0),0);
+      const name=loans[0]?.borrower||input.value.trim();
+      const clear=!active.length&&fines<=0;
+      result.append(card(clear?'CLEARED · '+name:'NOT CLEARED · '+name,[
+        'Active loans · '+active.length,
+        'Outstanding fines · ₱'+fines.toFixed(2),
+        clear?'No library obligation found in this demo.':'Return outstanding books and settle or resolve fines before clearance.'
+      ]));
+      if(active.length)result.append(table(['Loan','Book','Due','Status'],active.map(l=>[l.id,l.title,l.due,l.due<staffDate()?'Overdue':'On Loan'])));
+    },'primary'));
+    r.append(wrap,result);
+  }
+  syncFeatureHighlights();
+}
+
+const librarianModuleBase=openModule;
+openModule=function(name){
+  if(activeRole==='Librarian'&&menus.Librarian.includes(name)){libraryView(name);return}
+  librarianModuleBase(name);
+};
 const adminBeforeCorrections=staffAdmin;
 staffAdmin=function(view){if(view!=='Staff Requests')return adminBeforeCorrections(view);if(activeRole!=='Administrator')return;featureOpened(view);currentModule=staffOfficeMenu;const r=demoPanel(view,'Administrator · Attendance and leave approvals');$('module-back').hidden=false;if(!staff.requests.length)r.append(el('p','No requests yet.'));staff.requests.forEach(q=>{const c=card(q.type+' · '+q.id,[staff.profile.name,q.status,q.start?q.start+' to '+q.end:q.date||'',q.category||q.item||'',q.details,q.timeIn?'Requested times: '+q.timeIn+' → '+q.timeOut:'',q.remark||'']);if(q.status==='Pending')c.append(form([{key:'decision',label:'Decision for '+q.id,options:['Approved','Declined']},{key:'remark',label:'Remarks for '+q.id,type:'textarea'}],'Save decision',v=>{if(q.status!=='Pending')return;if(v.decision==='Approved'&&q.type==='Attendance correction'){if(!q.timeIn||!q.timeOut){feedback('This older correction has no structured times. Decline it and ask Staff to resubmit using the updated form.');return}const before=staff.attendance.find(a=>a.date===q.date);const after={date:q.date,in:manilaDateTime(q.date,q.timeIn),out:manilaDateTime(q.date,q.timeOut)};staff.corrections=staff.corrections||[];staff.corrections.push({requestId:q.id,date:q.date,before:before?{...before}:null,after:{...after},reason:q.details,reviewed:new Date().toISOString()});if(before)Object.assign(before,after);else staff.attendance.push(after)}if(v.decision==='Approved'&&q.type==='Leave'){if(!leaveAllowance[q.category]||q.start?.slice(0,4)!==q.end?.slice(0,4)||!leaveDays(q)){feedback('This request needs a valid leave type and date range. Ask Staff to resubmit.');return}if(leaveDays(q)>leaveTotals(q.category,q.start.slice(0,4)).remaining){feedback('Insufficient remaining leave balance.');return}}q.status=v.decision;q.remark=v.remark;q.reviewed=new Date().toISOString();q.reviewer='Administrator demo';staffNotice(q.type+' '+q.status.toLowerCase()+': '+q.remark,'Request Tracker');const ok=staffSave('Administrator '+q.status.toLowerCase()+' '+q.type);render();staffAdmin(view);feedback(ok?'Decision saved. Attendance and leave totals are updated where applicable.':'Updated for this session; browser saving failed.')}));r.append(c)});syncFeatureHighlights();};
 
