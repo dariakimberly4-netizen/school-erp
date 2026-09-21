@@ -791,10 +791,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:eoy-clearance':'librarian-eoy-clearance-2026-09-21-v1',
-'Librarian:donations':'librarian-donations-2026-09-21-v1',
-'Librarian:calendar':'librarian-calendar-2026-09-21-v1',
-'Librarian:lost-card':'librarian-lost-card-2026-09-21-v1'
+'Librarian:bulk-import':'librarian-bulk-import-2026-09-22-v1',
+'Librarian:notifications':'librarian-notifications-2026-09-22-v1',
+'Librarian:archive-books':'librarian-archive-books-2026-09-22-v1',
+'Librarian:feedback':'librarian-feedback-2026-09-22-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -830,10 +830,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='End-of-Year Library Clearance')return 'Librarian:eoy-clearance';
-if(role==='Librarian'&&label==='Book Donation Management')return 'Librarian:donations';
-if(role==='Librarian'&&label==='Library Calendar')return 'Librarian:calendar';
-if(role==='Librarian'&&label==='Lost Library Card / Replacement')return 'Librarian:lost-card';
+if(role==='Librarian'&&label==='Bulk Import Books')return 'Librarian:bulk-import';
+if(role==='Librarian'&&label==='Library Notifications')return 'Librarian:notifications';
+if(role==='Librarian'&&label==='Archive / Withdrawn Books')return 'Librarian:archive-books';
+if(role==='Librarian'&&label==='Library Feedback & Suggestions')return 'Librarian:feedback';
 return null;
 };
 function featureUnseen(id){
@@ -870,10 +870,9 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Overdue & Clearance'&&featureUnseen('Librarian:eoy-clearance'))unseen=true;
-  if(label==='Catalog & Collection'&&featureUnseen('Librarian:donations'))unseen=true;
-  if(label==='Programs & Engagement'&&featureUnseen('Librarian:calendar'))unseen=true;
-  if(label==='Circulation'&&featureUnseen('Librarian:lost-card'))unseen=true;
+  if(label==='Catalog & Collection'&&(featureUnseen('Librarian:bulk-import')||featureUnseen('Librarian:archive-books')))unseen=true;
+  if(label==='Library Dashboard'&&featureUnseen('Librarian:notifications'))unseen=true;
+  if(label==='Programs & Engagement'&&featureUnseen('Librarian:feedback'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2881,12 +2880,12 @@ libraryView=function(view){
 
 /* Librarian main menu + submenu organization */
 const librarianGroups={
-  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings'],
-  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management'],
+  'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications'],
+  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books'],
   'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement'],
   'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
   'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review'],
-  'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar'],
+  'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar','Library Feedback & Suggestions'],
   'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests'],
   'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report']
 };
@@ -3211,6 +3210,168 @@ libraryView=function(view){
         libraryView(view);
       },'primary'));
       else if(x.status==='Approved')box.append(action('MARK ISSUED',()=>{x.status='Completed';librarySave('Replacement card issued.');libraryView(view)},'primary'));
+      r.append(box);
+    });
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian import, notifications, archive, and feedback pack */
+if(!Array.isArray(libraryState.notifications))libraryState.notifications=[
+  {id:'NOT-001',type:'Overdue',recipient:'Jamie Dela Cruz',message:'Philippine History is overdue.',status:'Pending',date:'2026-09-22'},
+  {id:'NOT-002',type:'Reservation',recipient:'Alex Santos',message:'A reserved title is ready for pickup.',status:'Sent',date:'2026-09-21'}
+];
+if(!Array.isArray(libraryState.archivedBooks))libraryState.archivedBooks=[];
+if(!Array.isArray(libraryState.feedback))libraryState.feedback=[
+  {id:'FDB-001',from:'Mika Reyes',role:'Student',type:'Book Suggestion',message:'Please add more beginner coding books.',status:'New',date:'2026-09-21'}
+];
+librarySave();
+
+const libraryViewGrowthBase=libraryView;
+libraryView=function(view){
+  const special=['Bulk Import Books','Library Notifications','Archive / Withdrawn Books','Library Feedback & Suggestions'];
+  if(!special.includes(view))return libraryViewGrowthBase(view);
+  featureOpened(view);
+  currentModule=view;
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Bulk Import Books'){
+    r.append(card('BULK IMPORT BOOKS',[
+      'Import multiple demo catalog records from CSV.',
+      'Columns: title, author, category, callNo, copies, shelf'
+    ]));
+    const wrap=el('div',undefined,'parent-form');
+    const lab=el('label','CSV data');
+    const ta=el('textarea');
+    ta.rows=8;
+    ta.placeholder='title,author,category,callNo,copies,shelf\nGeneral Science,A. Reyes,Science,SCI 500 REY,2,A-02';
+    lab.append(ta);
+    const preview=el('div');
+    const parse=()=>{
+      const lines=ta.value.trim().split(/\r?\n/).filter(Boolean);
+      if(!lines.length){feedback('Paste CSV data first.');return []}
+      const first=lines[0].toLowerCase();
+      const data=first.includes('title')?lines.slice(1):lines;
+      return data.map(line=>{
+        const parts=line.split(',').map(x=>x.trim());
+        return {title:parts[0]||'',author:parts[1]||'Unknown',category:parts[2]||'General',callNo:parts[3]||'',copies:Math.max(1,Number(parts[4])||1),shelf:parts[5]||'UNASSIGNED'};
+      }).filter(x=>x.title);
+    };
+    wrap.append(lab,
+      action('PREVIEW IMPORT',()=>{
+        preview.replaceChildren();
+        const rows=parse();
+        if(!rows.length)return;
+        preview.append(table(['Title','Author','Category','Call No.','Copies','Shelf'],rows.map(x=>[x.title,x.author,x.category,x.callNo,x.copies,x.shelf])));
+      },'outline'),
+      action('IMPORT BOOKS',()=>{
+        const rows=parse();
+        if(!rows.length)return;
+        rows.forEach(x=>{
+          const id='BK-'+String(libraryState.books.length+1).padStart(3,'0');
+          libraryState.books.push({id,...x,available:x.copies,status:'Available',addedDate:staffDate()});
+        });
+        librarySave(rows.length+' book record(s) imported.');
+        libraryView(view);
+      },'primary')
+    );
+    r.append(wrap,preview);
+  }
+
+  if(view==='Library Notifications'){
+    const overdue=libraryOverdues();
+    r.append(card('LIBRARY NOTIFICATIONS',[
+      libraryState.notifications.filter(x=>x.status==='Pending').length+' pending notification(s)',
+      overdue.length+' current overdue loan(s)',
+      'Demo notifications are stored locally and are not actually sent.'
+    ]));
+    r.append(action('GENERATE OVERDUE REMINDERS',()=>{
+      overdue.forEach(l=>{
+        const exists=libraryState.notifications.some(n=>n.type==='Overdue'&&n.recipient===l.borrower&&n.message.includes(l.title)&&n.status!=='Dismissed');
+        if(!exists)libraryState.notifications.unshift({
+          id:'NOT-'+Date.now().toString().slice(-6)+Math.floor(Math.random()*9),
+          type:'Overdue',recipient:l.borrower,message:l.title+' is overdue. Please return or contact the library.',
+          status:'Pending',date:staffDate()
+        });
+      });
+      librarySave('Overdue reminder list refreshed.');
+      libraryView(view);
+    },'primary'));
+    r.append(form([
+      {key:'recipient',label:'Recipient'},
+      {key:'type',label:'Notification type',options:['Due Soon','Overdue','Reservation','Clearance','Announcement']},
+      {key:'message',label:'Message',type:'textarea'}
+    ],'ADD DEMO NOTIFICATION',v=>{
+      libraryState.notifications.unshift({id:'NOT-'+Date.now().toString().slice(-6),...v,status:'Pending',date:staffDate()});
+      librarySave('Notification added.');
+      libraryView(view);
+    }));
+    libraryState.notifications.forEach(n=>{
+      const box=card(n.type+' · '+n.recipient,[n.message,'Status · '+n.status,'Date · '+n.date]);
+      if(n.status==='Pending')box.append(action('MARK SENT',()=>{n.status='Sent';librarySave('Notification marked sent.');libraryView(view)},'primary'));
+      if(n.status!=='Dismissed')box.append(action('DISMISS',()=>{n.status='Dismissed';librarySave('Notification dismissed.');libraryView(view)},'outline'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Archive / Withdrawn Books'){
+    r.append(card('ARCHIVE / WITHDRAWN BOOKS',[
+      libraryState.archivedBooks.length+' archived / withdrawn record(s)',
+      'Keep the historical record instead of deleting catalog items.'
+    ]));
+    const active=libraryState.books.filter(b=>b.status!=='Archived'&&b.status!=='Withdrawn');
+    active.forEach(b=>{
+      const box=card(b.id+' · '+b.title,[
+        b.author,
+        'Copies · '+b.copies,
+        'Shelf · '+b.shelf,
+        'Status · '+b.status
+      ]);
+      const wrap=el('div',undefined,'parent-form');
+      const sel=el('select');
+      ['Obsolete','Beyond Repair','Lost / Unrecovered','Duplicate / Excess','Other'].forEach(x=>{const o=el('option',x);o.value=x;sel.append(o)});
+      wrap.append(sel,action('WITHDRAW / ARCHIVE',()=>{
+        if(libraryState.loans.some(l=>l.bookId===b.id&&!l.returned)){feedback('Return active loans before withdrawing this book.');return}
+        libraryState.archivedBooks.unshift({
+          id:'ARC-'+Date.now().toString().slice(-6),bookId:b.id,title:b.title,reason:sel.value,date:staffDate(),copies:b.copies
+        });
+        b.status='Withdrawn';b.available=0;
+        librarySave('Book moved to archive / withdrawn records.');
+        libraryView(view);
+      },'outline'));
+      box.append(wrap);r.append(box);
+    });
+    if(libraryState.archivedBooks.length){
+      r.append(el('h2','Archived / Withdrawn Records'));
+      r.append(table(['Date','Book ID','Title','Reason','Copies'],libraryState.archivedBooks.map(x=>[x.date,x.bookId,x.title,x.reason,x.copies])));
+    }
+  }
+
+  if(view==='Library Feedback & Suggestions'){
+    r.append(card('LIBRARY FEEDBACK & SUGGESTIONS',[
+      libraryState.feedback.filter(x=>x.status==='New').length+' new item(s)',
+      'Collect book suggestions, service feedback, and library requests.'
+    ]));
+    r.append(form([
+      {key:'from',label:'Name'},
+      {key:'role',label:'Role',options:['Student','Teacher','Parent','Staff','Other']},
+      {key:'type',label:'Type',options:['Book Suggestion','Service Feedback','Facility Suggestion','Digital Resource Request','Other']},
+      {key:'message',label:'Feedback / suggestion',type:'textarea'}
+    ],'SUBMIT FEEDBACK',v=>{
+      libraryState.feedback.unshift({id:'FDB-'+Date.now().toString().slice(-6),...v,status:'New',date:staffDate()});
+      librarySave('Feedback submitted.');
+      libraryView(view);
+    }));
+    libraryState.feedback.forEach(x=>{
+      const box=card(x.id+' · '+x.type,[
+        x.from+' · '+x.role,
+        x.message,
+        'Status · '+x.status,
+        'Date · '+x.date
+      ]);
+      if(x.status==='New')box.append(action('MARK REVIEWED',()=>{x.status='Reviewed';librarySave('Feedback reviewed.');libraryView(view)},'outline'));
+      if(x.status==='Reviewed')box.append(action('MARK ACTIONED',()=>{x.status='Actioned';librarySave('Feedback marked actioned.');libraryView(view)},'primary'));
       r.append(box);
     });
   }
