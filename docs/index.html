@@ -650,7 +650,11 @@ const FEATURE_RELEASES={
 'Staff:digital-id':'staff-digital-id-2026-09-21-v1',
 'Staff:duty-change':'staff-duty-change-2026-09-21-v1',
 'Staff:announcement-ack':'staff-announcement-ack-2026-09-21-v1',
-'Staff:help-desk':'staff-help-desk-2026-09-21-v1'
+'Staff:help-desk':'staff-help-desk-2026-09-21-v1',
+'Staff:global-search':'staff-global-search-2026-09-21-v1',
+'Staff:document-expiry':'staff-document-expiry-2026-09-21-v1',
+'Staff:performance':'staff-performance-evaluation-2026-09-21-v1',
+'Staff:audit-trail':'staff-audit-trail-2026-09-21-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -668,6 +672,10 @@ if(role==='Staff'&&label==='Digital Staff ID')return 'Staff:digital-id';
 if(role==='Staff'&&['My Schedule','Shift / Duty Change Request'].includes(label))return 'Staff:duty-change';
 if(role==='Staff'&&['Announcements','Announcement Acknowledgement'].includes(label))return 'Staff:announcement-ack';
 if(role==='Staff'&&['My Profile & Help','Staff Help Desk'].includes(label))return 'Staff:help-desk';
+if(role==='Staff'&&label==='Global Search')return 'Staff:global-search';
+if(role==='Staff'&&label==='Document Expiry Alerts')return 'Staff:document-expiry';
+if(role==='Staff'&&label==='Performance & Evaluation')return 'Staff:performance';
+if(role==='Staff'&&label==='Audit Trail')return 'Staff:audit-trail';
 return null;
 };
 function featureUnseen(id){return id&&seenFeatures[id]!==FEATURE_RELEASES[id]}
@@ -686,7 +694,14 @@ document.querySelectorAll('.new-chip').forEach(n=>n.remove());
 for(const b of document.querySelectorAll('#orbit .node,#panel-content .item,#new-feature-banner button')){
 const label=b.classList.contains('node')?b.querySelector('span')?.textContent:b.textContent.trim();
 const id=featureId(activeRole,label||'');
-if(featureUnseen(id)){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
+let unseen=featureUnseen(id);
+if(activeRole==='Staff'&&b.classList.contains('node')){
+  if(label==='Dashboard'&&featureUnseen('Staff:global-search'))unseen=true;
+  if(label==='My Documents'&&featureUnseen('Staff:document-expiry'))unseen=true;
+  if(label==='My Profile & Help'&&featureUnseen('Staff:performance'))unseen=true;
+  if(label==='Reports'&&featureUnseen('Staff:audit-trail'))unseen=true;
+}
+if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
 const banner=$('new-feature-banner');
 if(activeRole==='Staff'||activeRole==='Administrator'){
@@ -1355,6 +1370,168 @@ if(view==='Staff Help Desk'){
     },'outline'));
     r.append(box);
   });
+}
+syncFeatureHighlights();
+};
+
+
+/* Staff intelligence pack: global search, expiry alerts, performance, audit trail */
+if(!Array.isArray(staff.performanceReviews))staff.performanceReviews=[];
+if(!staff.performanceReviews.length)staff.performanceReviews.push({
+id:'PERF-DEMO-2026-H1',
+period:'January–June 2026',
+status:'Completed',
+overall:'Meets Expectations',
+supervisor:'Office Administrator',
+goals:['Maintain accurate office records','Complete assigned duties on time','Support school events and parent service'],
+feedback:'Reliable in assigned duties and responsive to office requests.',
+acknowledged:false,
+date:'2026-07-05T02:00:00.000Z'
+});
+if(!Array.isArray(staff.documentExpiry))staff.documentExpiry=[];
+if(!staff.documentExpiry.length)staff.documentExpiry.push(
+{id:'DOC-EXP-001',document:'Data Privacy Refresher Certificate',expires:'2026-10-05',status:'Expiring Soon'},
+{id:'DOC-EXP-002',document:'Staff ID Validation',expires:'2026-12-31',status:'Active'},
+{id:'DOC-EXP-003',document:'Basic Safety Orientation',expires:'2027-08-28',status:'Active'}
+);
+
+if(!staffMenus.Dashboard.includes('Global Search'))staffMenus.Dashboard.push('Global Search');
+if(!staffMenus['My Documents'].includes('Document Expiry Alerts'))staffMenus['My Documents'].push('Document Expiry Alerts');
+if(!staffMenus['My Profile & Help'].includes('Performance & Evaluation'))staffMenus['My Profile & Help'].push('Performance & Evaluation');
+if(!staffMenus.Reports.includes('Audit Trail'))staffMenus.Reports.push('Audit Trail');
+menus.Staff=Object.keys(staffMenus);
+
+const staffViewBeforeIntelligencePack=staffView;
+staffView=function(view){
+if(!['Global Search','Document Expiry Alerts','Performance & Evaluation','Audit Trail'].includes(view))return staffViewBeforeIntelligencePack(view);
+featureOpened(view);
+const r=demoPanel(view,staff.profile.name+' · Staff workspace · Demo');
+$('module-back').hidden=false;
+
+if(view==='Global Search'){
+  r.append(card('GLOBAL STAFF SEARCH',[
+    'Search across staff directory, tasks, requests, documents, work orders, announcements, and help tickets.',
+    'Demo data only.'
+  ]));
+  const wrap=el('div',undefined,'parent-form');
+  const label=el('label','Search everything');
+  const input=el('input');
+  input.type='search';
+  input.placeholder='Try: projector, leave, payroll, Maria, safety...';
+  const results=el('div');
+  const searchBtn=action('SEARCH',runSearch,'primary');
+  label.append(input);wrap.append(label,searchBtn);r.append(wrap,results);
+  function runSearch(){
+    const q=input.value.trim().toLowerCase();
+    results.replaceChildren();
+    if(!q){results.append(el('p','Type a word or phrase to search.','hint'));return}
+    const found=[];
+    const addResult=(type,title,detail,open)=>{const hay=(type+' '+title+' '+detail).toLowerCase();if(hay.includes(q))found.push({type,title,detail,open})};
+    [
+      ['Sam Reyes','Administrative Staff · School Operations · Ext. 201'],
+      ['Maria Santos','Registrar Staff · Registrar · Ext. 210'],
+      ['Ana Cruz','Library Assistant · Library · Ext. 220'],
+      ['Leo Mendoza','Facilities Coordinator · Facilities · Ext. 230'],
+      ['Mia Flores','Guidance Staff · Student Services · Ext. 240']
+    ].forEach(x=>addResult('Staff Directory',x[0],x[1],()=>staffView('Staff Directory')));
+    staff.tasks.forEach(x=>addResult('Task',x.title,(x.status||'')+' · '+(x.note||''),()=>staffView('My Tasks')));
+    staff.requests.forEach(x=>addResult('Request',x.type+' · '+(x.id||''),(x.status||'')+' · '+(x.details||''),()=>staffView('Approval Center')));
+    staff.workOrders?.forEach(x=>addResult('Work Order',x.title,(x.location||'')+' · '+(x.status||'')+' · '+(x.notes||''),()=>staffView('Work Order Board')));
+    staff.helpTickets?.forEach(x=>addResult('Help Desk',x.subject,(x.category||'')+' · '+(x.status||'')+' · '+(x.details||''),()=>staffView('Staff Help Desk')));
+    staff.documentExpiry.forEach(x=>addResult('Document',x.document,x.status+' · Expires '+x.expires,()=>staffView('Document Expiry Alerts')));
+    const notices=[
+      ['Parent Meeting Staff Assignment','September 28 parent meeting duty roster'],
+      ['Emergency Preparedness Reminder','Evacuation assignments and emergency procedures'],
+      ['Monthly Staff Coordination','Staff coordination meeting details']
+    ];
+    notices.forEach(x=>addResult('Announcement',x[0],x[1],()=>staffView('Announcement Acknowledgement')));
+    if(!found.length){results.append(el('p','No demo results found for “'+input.value+'”.','hint'));return}
+    results.append(el('h2',found.length+' result'+(found.length===1?'':'s')));
+    found.slice(0,20).forEach(x=>{
+      const box=card(x.type+' · '+x.title,[x.detail]);
+      box.append(action('OPEN',x.open,'outline'));
+      results.append(box);
+    });
+  }
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runSearch()}});
+}
+
+if(view==='Document Expiry Alerts'){
+  const today=new Date(staffDate()+'T00:00:00+08:00');
+  const daysLeft=d=>Math.ceil((new Date(d+'T00:00:00+08:00')-today)/86400000);
+  r.append(card('DOCUMENT EXPIRY ALERTS',[
+    staff.documentExpiry.filter(x=>daysLeft(x.expires)<=30).length+' item(s) expiring within 30 days',
+    'Keep staff credentials, certificates, and required records current.'
+  ]));
+  r.append(table(['Document','Expiry','Days Left','Status'],
+    staff.documentExpiry.map(x=>{
+      const left=daysLeft(x.expires);
+      const status=left<0?'Expired':left<=30?'Expiring Soon':x.status;
+      return [x.document,x.expires,left<0?Math.abs(left)+' days overdue':left+' days',status];
+    })
+  ));
+  r.append(card('RECOMMENDED ACTIONS',[
+    'Renew or update items marked Expiring Soon.',
+    'Upload renewed documents through Document Center when available.',
+    'Check with Administration or HR for school-specific requirements.'
+  ]));
+  r.append(action('OPEN DOCUMENT CENTER',()=>staffView('Document Center'),'outline'));
+}
+
+if(view==='Performance & Evaluation'){
+  const latest=staff.performanceReviews[0];
+  r.append(card('PERFORMANCE & EVALUATION',[
+    'Current review history and supervisor feedback.',
+    'Fictional demo evaluation data.'
+  ]));
+  staff.performanceReviews.forEach(p=>{
+    const box=card(p.period+' · '+p.status,[
+      'Overall · '+p.overall,
+      'Supervisor · '+p.supervisor,
+      'Feedback · '+p.feedback,
+      'Goals · '+p.goals.join(' · '),
+      p.acknowledged?'Staff acknowledgement · Completed':'Staff acknowledgement · Pending'
+    ]);
+    if(!p.acknowledged)box.append(action('ACKNOWLEDGE REVIEW',()=>{
+      p.acknowledged=true;p.acknowledgedAt=new Date().toISOString();
+      staffDone('Performance & Evaluation','Performance review acknowledged: '+p.period);
+    },'primary'));
+    r.append(box);
+  });
+  r.append(card('NEXT REVIEW GOALS',[
+    'Maintain accurate and timely records',
+    'Complete assigned work orders and requests within target timelines',
+    'Participate in required training and emergency preparedness activities',
+    'Support positive service for students, parents, and staff'
+  ]));
+}
+
+if(view==='Audit Trail'){
+  const events=[];
+  (staff.activity||[]).forEach(a=>events.push({date:a.date,actor:'Staff',action:a.text,source:'Activity'}));
+  (staff.requests||[]).forEach(q=>{
+    if(q.created)events.push({date:q.created,actor:'Staff',action:'Created '+q.type+' request '+(q.id||''),source:'Request'});
+    if(q.reviewed)events.push({date:q.reviewed,actor:q.reviewer||'Administrator',action:(q.status||'Updated')+' '+q.type+' request '+(q.id||''),source:'Approval'});
+  });
+  (staff.workOrders||[]).forEach(w=>{
+    if(w.created)events.push({date:w.created,actor:'Staff',action:'Created work order '+w.id+' · '+w.title,source:'Work Order'});
+    if(w.updated)events.push({date:w.updated,actor:'Staff',action:'Updated work order '+w.id+' to '+w.status,source:'Work Order'});
+  });
+  (staff.helpTickets||[]).forEach(t=>{
+    if(t.created)events.push({date:t.created,actor:'Staff',action:'Created help ticket '+t.id+' · '+t.subject,source:'Help Desk'});
+    if(t.updated)events.push({date:t.updated,actor:'Staff',action:'Updated help ticket '+t.id+' to '+t.status,source:'Help Desk'});
+  });
+  (staff.announcementAcks||[]).forEach(a=>events.push({date:a.date,actor:'Staff',action:'Acknowledged announcement · '+a.title,source:'Announcement'}));
+  events.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  r.append(card('AUDIT TRAIL',[
+    events.length+' recorded demo event(s)',
+    'Shows what changed, who performed the action, and when.',
+    'A production system should store audit logs server-side and prevent ordinary users from editing them.'
+  ]));
+  if(!events.length)r.append(el('p','No audit events yet.','hint'));
+  else r.append(table(['Date / Time','Actor','Action','Source'],
+    events.slice(0,100).map(e=>[staffTime(e.date),e.actor,e.action,e.source])
+  ));
 }
 syncFeatureHighlights();
 };
