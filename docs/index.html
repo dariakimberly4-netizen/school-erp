@@ -184,6 +184,12 @@ input,select,textarea{font-size:16px!important;line-height:1.4}
 
 
 
+/* LIBRARIAN VISUAL CLEANUP 2026-09-22 */
+
+/* LIBRARIAN VISUAL CLEANUP 2026-09-22 */
+#orbit .library-hub-center .center-count{background:var(--cdgc-green)!important;color:#fff!important;border:1px solid rgba(255,255,255,.8);box-shadow:none!important}
+#new-feature-banner[hidden]{display:none!important;margin:0!important;padding:0!important}
+#app:has(#new-feature-banner[hidden]) .orbit-wrap{margin-top:0!important}
 /* LIBRARIAN QA CLEANUP 2026-09-22 */
 @media print{th,td{white-space:normal!important;overflow-wrap:anywhere}.table-wrap{overflow:visible!important}}
 @media(max-width:650px){dialog{padding:16px}.table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.parent-card{overflow-wrap:anywhere}}
@@ -887,14 +893,19 @@ const pending=activeRole==='Staff'
   :activeRole==='Librarian'
     ?Object.keys(FEATURE_RELEASES).some(id=>id.startsWith('Librarian:')&&featureUnseen(id))
     :false;
-banner.hidden=false;
-banner.classList.toggle('features-unseen',pending);
-const title=banner.querySelector('strong');
-const titleText=activeRole==='Staff'?'CONNECTED STAFF WORKFLOWS':activeRole==='Librarian'?'NEW LIBRARY FEATURES':'STAFF OPERATIONS';
-if(title&&title.textContent!==(pending?'NEW · ':'')+titleText)title.textContent=(pending?'NEW · ':'')+titleText;
-if(activeRole==='Librarian'){
-  const p=banner.querySelector('p');
-  if(p)p.textContent=pending?'Gold modules are newly added. Open one and its highlight disappears.':'All new Librarian features have been opened.';
+if(activeRole==='Librarian'&&!pending){
+  banner.hidden=true;
+  banner.classList.remove('features-unseen');
+}else{
+  banner.hidden=false;
+  banner.classList.toggle('features-unseen',pending);
+  const title=banner.querySelector('strong');
+  const titleText=activeRole==='Staff'?'CONNECTED STAFF WORKFLOWS':activeRole==='Librarian'?'NEW LIBRARY FEATURES':'STAFF OPERATIONS';
+  if(title&&title.textContent!==(pending?'NEW · ':'')+titleText)title.textContent=(pending?'NEW · ':'')+titleText;
+  if(activeRole==='Librarian'){
+    const p=banner.querySelector('p');
+    if(p)p.textContent='Gold modules are newly added. Open one and its highlight disappears.';
+  }
 }
 }else{banner.hidden=true;banner.classList.remove('features-unseen')}
 const description=$('panel-description');if(description)description.textContent=description.textContent.replace(/\s*· NEW\b/g,'');
