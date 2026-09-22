@@ -18,25 +18,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply Librarian final pack once
+      - name: Apply Librarian room quality pack once
         shell: bash
         run: |
-          if grep -q "Book Request Approval Queue" docs/index.html; then
-            echo "Librarian final pack already applied"
+          if grep -q "Reading Room Reservation" docs/index.html; then
+            echo "Librarian room quality pack already applied"
           else
-            python - <<'PY'
-          from pathlib import Path
-          wf=Path('.github/workflows/add-librarian-final-pack.yml').read_text(encoding='utf-8')
-          start=wf.index("python - <<'PY'")+len("python - <<'PY'\n")
-          end=wf.index("\n          PY",start)
-          raw=wf[start:end].splitlines()
-          code='\n'.join((line[10:] if line.startswith('          ') else line) for line in raw)
-          exec(compile(code,'embedded_librarian_patch.py','exec'))
-          PY
+            python scripts/run_embedded_room_pack.py
             git config user.name "School Orbit Bot"
             git config user.email "actions@users.noreply.github.com"
             git add docs/index.html
-            git commit -m "Add Librarian request approvals renewals restrictions and daily ops"
+            git commit -m "Add Librarian room reservations closing checklist data quality and weeding"
             git push
           fi
       - uses: actions/configure-pages@v5
