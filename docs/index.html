@@ -791,10 +791,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:equipment':'librarian-equipment-2026-09-22-v1',
-'Librarian:audit-trail':'librarian-audit-trail-2026-09-22-v1',
-'Librarian:access-permissions':'librarian-access-permissions-2026-09-22-v1',
-'Librarian:interlibrary-loan':'librarian-interlibrary-loan-2026-09-22-v1'
+'Librarian:shelf-transfer':'librarian-shelf-transfer-2026-09-22-v1',
+'Librarian:periodicals':'librarian-periodicals-2026-09-22-v1',
+'Librarian:incident-log':'librarian-incident-log-2026-09-22-v1',
+'Librarian:backup-restore':'librarian-backup-restore-2026-09-22-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -830,10 +830,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Library Equipment Tracking')return 'Librarian:equipment';
-if(role==='Librarian'&&label==='Library Audit Trail')return 'Librarian:audit-trail';
-if(role==='Librarian'&&label==='User Access & Permissions')return 'Librarian:access-permissions';
-if(role==='Librarian'&&label==='Inter-Library Loan')return 'Librarian:interlibrary-loan';
+if(role==='Librarian'&&label==='Shelf Transfer / Relocation Log')return 'Librarian:shelf-transfer';
+if(role==='Librarian'&&label==='Periodicals / Magazine Management')return 'Librarian:periodicals';
+if(role==='Librarian'&&label==='Library Incident & Behavior Log')return 'Librarian:incident-log';
+if(role==='Librarian'&&label==='Full Library Backup & Restore')return 'Librarian:backup-restore';
 return null;
 };
 function featureUnseen(id){
@@ -870,10 +870,9 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Inventory'&&featureUnseen('Librarian:equipment'))unseen=true;
-  if(label==='Reports'&&featureUnseen('Librarian:audit-trail'))unseen=true;
-  if(label==='Library Dashboard'&&featureUnseen('Librarian:access-permissions'))unseen=true;
-  if(label==='Circulation'&&featureUnseen('Librarian:interlibrary-loan'))unseen=true;
+  if(label==='Inventory'&&featureUnseen('Librarian:shelf-transfer'))unseen=true;
+  if(label==='Catalog & Collection'&&featureUnseen('Librarian:periodicals'))unseen=true;
+  if(label==='Reports'&&(featureUnseen('Librarian:incident-log')||featureUnseen('Librarian:backup-restore')))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2882,13 +2881,13 @@ libraryView=function(view){
 /* Librarian main menu + submenu organization */
 const librarianGroups={
   'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications','User Access & Permissions'],
-  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books','Accession Register'],
+  'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books','Accession Register','Periodicals / Magazine Management'],
   'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement','Inter-Library Loan'],
   'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
-  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review','Library Equipment Tracking'],
+  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review','Library Equipment Tracking','Shelf Transfer / Relocation Log'],
   'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar','Library Feedback & Suggestions'],
   'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests','Budget & Acquisition Tracking','Publisher / Supplier Directory'],
-  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library Audit Trail']
+  'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library Audit Trail','Library Incident & Behavior Log','Full Library Backup & Restore']
 };
 menus.Librarian=Object.keys(librarianGroups);
 
@@ -3739,6 +3738,192 @@ libraryView=function(view){
       },'primary'));
       r.append(box);
     });
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian shelf transfer, periodicals, incident, and backup pack */
+if(!Array.isArray(libraryState.shelfTransfers))libraryState.shelfTransfers=[
+  {id:'MOVE-001',bookId:'BK-002',title:'English Reader 7',from:'B-02',to:'B-03',reason:'Shelf reorganization',date:'2026-09-20'}
+];
+if(!Array.isArray(libraryState.periodicals))libraryState.periodicals=[
+  {id:'PER-001',title:'National Geographic Kids',publisher:'National Geographic',frequency:'Monthly',issue:'September 2026',received:'2026-09-05',renewal:'2027-01-31',status:'Current'},
+  {id:'PER-002',title:'Science Illustrated',publisher:'Science Media',frequency:'Quarterly',issue:'Q3 2026',received:'2026-08-18',renewal:'2026-12-31',status:'Current'}
+];
+if(!Array.isArray(libraryState.incidents))libraryState.incidents=[
+  {id:'INC-001',date:'2026-09-21',person:'Demo Student',type:'Rule Violation',details:'Food brought into reading area.',action:'Verbal reminder',status:'Closed'}
+];
+librarySave();
+
+const libraryViewServicesBase=libraryView;
+libraryView=function(view){
+  const special=['Shelf Transfer / Relocation Log','Periodicals / Magazine Management','Library Incident & Behavior Log','Full Library Backup & Restore'];
+  if(!special.includes(view))return libraryViewServicesBase(view);
+  featureOpened(view);
+  currentModule=view;
+  if(typeof libraryAudit==='function')libraryAudit('Opened '+view,view);
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Shelf Transfer / Relocation Log'){
+    r.append(card('SHELF TRANSFER / RELOCATION LOG',[
+      libraryState.shelfTransfers.length+' movement record(s)',
+      'Move books between shelves or sections while preserving location history.'
+    ]));
+    r.append(form([
+      {key:'bookId',label:'Book ID'},
+      {key:'to',label:'New shelf / section'},
+      {key:'reason',label:'Reason for relocation',type:'textarea'}
+    ],'MOVE BOOK',v=>{
+      const b=libraryBook(v.bookId.trim());
+      if(!b){feedback('Book ID not found.');return}
+      const from=b.shelf||'UNASSIGNED';
+      const to=v.to.trim();
+      if(!to||to===from){feedback('Enter a different destination shelf.');return}
+      b.shelf=to;
+      libraryState.shelfTransfers.unshift({
+        id:'MOVE-'+Date.now().toString().slice(-6),bookId:b.id,title:b.title,from,to,
+        reason:v.reason||'Relocation',date:staffDate()
+      });
+      if(typeof libraryAudit==='function')libraryAudit('Moved '+b.id+' from '+from+' to '+to,'Shelf Transfer / Relocation Log');
+      librarySave('Book location updated.');
+      libraryView(view);
+    }));
+    r.append(table(
+      ['Date','Book ID','Title','From','To','Reason'],
+      libraryState.shelfTransfers.map(x=>[x.date,x.bookId,x.title,x.from,x.to,x.reason])
+    ));
+  }
+
+  if(view==='Periodicals / Magazine Management'){
+    r.append(card('PERIODICALS / MAGAZINE MANAGEMENT',[
+      libraryState.periodicals.length+' periodical record(s)',
+      'Track subscriptions, issues received, missing issues, and renewal dates.'
+    ]));
+    r.append(form([
+      {key:'title',label:'Periodical / magazine title'},
+      {key:'publisher',label:'Publisher'},
+      {key:'frequency',label:'Frequency',options:['Weekly','Monthly','Bi-Monthly','Quarterly','Semiannual','Annual']},
+      {key:'issue',label:'Issue / volume'},
+      {key:'received',label:'Date received',type:'date'},
+      {key:'renewal',label:'Renewal / expiry date',type:'date'}
+    ],'ADD PERIODICAL',v=>{
+      libraryState.periodicals.unshift({id:'PER-'+Date.now().toString().slice(-6),...v,status:'Current'});
+      if(typeof libraryAudit==='function')libraryAudit('Added periodical '+v.title,'Periodicals / Magazine Management');
+      librarySave('Periodical added.');
+      libraryView(view);
+    }));
+    libraryState.periodicals.forEach(x=>{
+      const box=card(x.title+' · '+x.issue,[
+        'Publisher · '+x.publisher,
+        'Frequency · '+x.frequency,
+        'Received · '+x.received,
+        'Renewal / expiry · '+x.renewal,
+        'Status · '+x.status
+      ]);
+      if(x.status==='Current')box.append(
+        action('MARK ISSUE MISSING',()=>{
+          x.status='Missing Issue';
+          if(typeof libraryAudit==='function')libraryAudit('Marked '+x.title+' issue missing','Periodicals / Magazine Management');
+          librarySave('Issue marked missing.');libraryView(view);
+        },'outline'),
+        action('MARK SUBSCRIPTION EXPIRED',()=>{
+          x.status='Expired';
+          if(typeof libraryAudit==='function')libraryAudit('Expired subscription '+x.title,'Periodicals / Magazine Management');
+          librarySave('Subscription marked expired.');libraryView(view);
+        },'outline')
+      );
+      else box.append(action('MARK CURRENT',()=>{
+        x.status='Current';
+        if(typeof libraryAudit==='function')libraryAudit('Restored '+x.title+' to current','Periodicals / Magazine Management');
+        librarySave('Periodical status updated.');libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Library Incident & Behavior Log'){
+    r.append(card('LIBRARY INCIDENT & BEHAVIOR LOG',[
+      libraryState.incidents.filter(x=>x.status!=='Closed').length+' open incident(s)',
+      'Record library rule violations, damaged facilities, safety concerns, or other incidents.'
+    ]));
+    r.append(form([
+      {key:'date',label:'Incident date',type:'date'},
+      {key:'person',label:'Person / group involved'},
+      {key:'type',label:'Incident type',options:['Rule Violation','Damaged Property','Safety Concern','Behavior Concern','Lost Property','Other']},
+      {key:'details',label:'Incident details',type:'textarea'},
+      {key:'action',label:'Immediate action taken',type:'textarea'}
+    ],'RECORD INCIDENT',v=>{
+      libraryState.incidents.unshift({id:'INC-'+Date.now().toString().slice(-6),...v,status:'Open'});
+      if(typeof libraryAudit==='function')libraryAudit('Recorded incident for '+v.person,'Library Incident & Behavior Log');
+      librarySave('Incident recorded.');
+      libraryView(view);
+    }));
+    libraryState.incidents.forEach(x=>{
+      const box=card(x.id+' · '+x.type,[
+        'Date · '+x.date,
+        'Person / group · '+x.person,
+        x.details,
+        'Action · '+x.action,
+        'Status · '+x.status
+      ]);
+      if(x.status==='Open')box.append(action('MARK FOR FOLLOW-UP',()=>{
+        x.status='For Follow-up';librarySave('Incident moved to follow-up.');libraryView(view);
+      },'outline'));
+      else if(x.status==='For Follow-up')box.append(action('CLOSE INCIDENT',()=>{
+        x.status='Closed';
+        if(typeof libraryAudit==='function')libraryAudit('Closed '+x.id,'Library Incident & Behavior Log');
+        librarySave('Incident closed.');libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+  }
+
+  if(view==='Full Library Backup & Restore'){
+    r.append(card('FULL LIBRARY BACKUP & RESTORE',[
+      'Export the complete browser-local demo library data as JSON.',
+      'Restore replaces the current demo library data in this browser.',
+      'Use only backup files created by this School Orbit demo.'
+    ]));
+    r.append(action('DOWNLOAD FULL BACKUP',()=>{
+      const payload={app:'School Orbit Library Demo',version:1,exportedAt:new Date().toISOString(),libraryState};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='school-orbit-library-backup-'+staffDate()+'.json';
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+      if(typeof libraryAudit==='function')libraryAudit('Downloaded full library backup','Full Library Backup & Restore');
+    },'primary'));
+    const input=el('input');input.type='file';input.accept='.json,application/json';
+    const status=el('p','Choose a School Orbit library backup file to restore.','hint');
+    input.onchange=()=>{
+      const file=input.files&&input.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        try{
+          const parsed=JSON.parse(String(reader.result||''));
+          if(!parsed||parsed.app!=='School Orbit Library Demo'||!parsed.libraryState||typeof parsed.libraryState!=='object')throw new Error('Invalid backup');
+          status.textContent='Valid backup selected: '+file.name;
+          const restore=action('RESTORE SELECTED BACKUP',()=>{
+            if(!confirm('Replace the current demo library data with this backup?'))return;
+            Object.keys(libraryState).forEach(k=>delete libraryState[k]);
+            Object.assign(libraryState,parsed.libraryState);
+            librarySave('Library backup restored.');
+            render();
+            libraryView('Full Library Backup & Restore');
+          },'outline');
+          status.after(restore);
+        }catch(e){
+          status.textContent='This file is not a valid School Orbit library backup.';
+        }
+      };
+      reader.readAsText(file);
+    };
+    const wrap=el('div',undefined,'parent-form');
+    wrap.append(input,status);
+    r.append(wrap);
   }
   syncFeatureHighlights();
 };
