@@ -399,7 +399,7 @@ const money=n=>'₱'+n.toLocaleString('en-PH',{minimumFractionDigits:2});
 function child(){return children.find(c=>c.id===selectedChild)}
 function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
 function action(text,fn,cls='outline'){const b=el('button',text,cls);b.type='button';b.onclick=fn;return b}
-function syncChild(){$('child-bar').hidden=activeRole!=='Parent';if(activeRole==='Parent'){$('child-select').replaceChildren(...children.map(c=>{const o=el('option',c.name+' · '+c.grade);o.value=c.id;return o}));$('child-select').value=selectedChild;$('welcome').textContent=child().name+'’s school orbit'}else $('welcome').textContent='Your school orbit'}
+function syncChild(){$('child-bar').hidden=activeRole!=='Parent';if(activeRole==='Parent'){$('child-select').replaceChildren(...children.map(c=>{const o=el('option',c.name+' · '+c.grade);o.value=c.id;return o}));$('child-select').value=selectedChild;$('welcome').textContent=child().name+'’s school orbit'}else $('welcome').textContent=activeRole==='Librarian'?'Librarian Orbit':'Your school orbit'}
 $('child-select').onchange=()=>{selectedChild=$('child-select').value;syncChild();render()};
 function card(title,lines){const b=el('section',undefined,'parent-card');b.append(el('h2',title));lines.forEach(x=>b.append(el('p',x)));return b}
 function table(headers,rows){const wrap=el('div',undefined,'table-wrap'),t=el('table'),head=el('thead'),tr=el('tr');headers.forEach(h=>{const th=el('th',h);th.scope='col';tr.append(th)});head.append(tr);t.append(head);const body=el('tbody');rows.forEach(row=>{const r=el('tr');row.forEach(v=>r.append(el('td',String(v))));body.append(r)});t.append(body);wrap.append(t);return wrap}
