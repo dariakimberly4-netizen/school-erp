@@ -4,7 +4,7 @@ on:
     branches: ["main"]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -18,6 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Apply Librarian governance pack once
+        shell: bash
+        run: |
+          if grep -q "Policy Acknowledgement" docs/index.html; then
+            echo "Librarian governance pack already applied"
+          else
+            python scripts/run_librarian_governance_pack.py
+            git config user.name "School Orbit Bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/index.html
+            git commit -m "Add Librarian policy training collection age and occupancy"
+            git push
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
