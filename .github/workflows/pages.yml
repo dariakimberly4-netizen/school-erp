@@ -4,7 +4,7 @@ on:
     branches: ["main"]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -18,6 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Apply Librarian intelligence pack once
+        shell: bash
+        run: |
+          if grep -q "Librarian Command Center" docs/index.html; then
+            echo "Librarian intelligence pack already applied"
+          else
+            python scripts/run_librarian_intelligence_pack.py
+            git config user.name "School Orbit Bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/index.html
+            git commit -m "Add Librarian demand curriculum heatmap and command center"
+            git push
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
