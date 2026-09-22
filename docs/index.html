@@ -791,10 +791,10 @@ const FEATURE_RELEASES={
 'Staff:policy-library':'staff-policy-library-2026-09-21-v1',
 'Staff:export-center':'staff-export-center-2026-09-21-v1',
 'Staff:team-availability':'staff-team-leave-availability-2026-09-21-v1',
-'Librarian:shelf-transfer':'librarian-shelf-transfer-2026-09-22-v1',
-'Librarian:periodicals':'librarian-periodicals-2026-09-22-v1',
-'Librarian:incident-log':'librarian-incident-log-2026-09-22-v1',
-'Librarian:backup-restore':'librarian-backup-restore-2026-09-22-v1'
+'Librarian:reservation-expiry':'librarian-reservation-expiry-2026-09-22-v1',
+'Librarian:fine-history':'librarian-fine-history-2026-09-22-v1',
+'Librarian:service-queue':'librarian-service-queue-2026-09-22-v1',
+'Librarian:inventory-closing':'librarian-inventory-closing-2026-09-22-v1'
 };
 const FEATURE_SEEN_KEY='school-orbit-seen-features';
 let seenFeatures={};
@@ -830,10 +830,10 @@ if(role==='Librarian'&&label==='Borrow / Return')return 'Librarian:borrow-return
 if(role==='Librarian'&&label==='Overdue & Fines')return 'Librarian:overdue-fines';
 if(role==='Librarian'&&label==='Inventory & Shelf Audit')return 'Librarian:inventory-audit';
 if(role==='Librarian'&&label==='Library Clearance')return 'Librarian:clearance';
-if(role==='Librarian'&&label==='Shelf Transfer / Relocation Log')return 'Librarian:shelf-transfer';
-if(role==='Librarian'&&label==='Periodicals / Magazine Management')return 'Librarian:periodicals';
-if(role==='Librarian'&&label==='Library Incident & Behavior Log')return 'Librarian:incident-log';
-if(role==='Librarian'&&label==='Full Library Backup & Restore')return 'Librarian:backup-restore';
+if(role==='Librarian'&&label==='Reservation Expiry Management')return 'Librarian:reservation-expiry';
+if(role==='Librarian'&&label==='Fine Adjustment / Waiver History')return 'Librarian:fine-history';
+if(role==='Librarian'&&label==='Library Service Counter Queue')return 'Librarian:service-queue';
+if(role==='Librarian'&&label==='Annual Inventory Closing')return 'Librarian:inventory-closing';
 return null;
 };
 function featureUnseen(id){
@@ -870,9 +870,9 @@ if(activeRole==='Staff'&&b.classList.contains('node')){
   if(label==='My Schedule'&&featureUnseen('Staff:team-availability'))unseen=true;
 }
 if(activeRole==='Librarian'&&b.classList.contains('node')){
-  if(label==='Inventory'&&featureUnseen('Librarian:shelf-transfer'))unseen=true;
-  if(label==='Catalog & Collection'&&featureUnseen('Librarian:periodicals'))unseen=true;
-  if(label==='Reports'&&(featureUnseen('Librarian:incident-log')||featureUnseen('Librarian:backup-restore')))unseen=true;
+  if(label==='Circulation'&&(featureUnseen('Librarian:reservation-expiry')||featureUnseen('Librarian:service-queue')))unseen=true;
+  if(label==='Overdue & Clearance'&&featureUnseen('Librarian:fine-history'))unseen=true;
+  if(label==='Inventory'&&featureUnseen('Librarian:inventory-closing'))unseen=true;
 }
 if(unseen){b.classList.add('new-feature');b.append(el('span','NEW','new-chip'));}
 }
@@ -2882,9 +2882,9 @@ libraryView=function(view){
 const librarianGroups={
   'Library Dashboard':['Today’s Library Overview','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Settings','Library Notifications','User Access & Permissions'],
   'Catalog & Collection':['Book Catalog','New Arrivals','Shelf Location Finder','Barcode / ISBN Lookup','Digital Resources','Book Donation Management','Bulk Import Books','Archive / Withdrawn Books','Accession Register','Periodicals / Magazine Management'],
-  'Circulation':['Borrow / Return','Reservations / Hold Queue','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement','Inter-Library Loan'],
-  'Overdue & Clearance':['Overdue & Fines','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
-  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review','Library Equipment Tracking','Shelf Transfer / Relocation Log'],
+  'Circulation':['Borrow / Return','Reservations / Hold Queue','Reservation Expiry Management','Borrower History','Library Card / QR Verification','Borrowing Rules','Lost Library Card / Replacement','Inter-Library Loan','Library Service Counter Queue'],
+  'Overdue & Clearance':['Overdue & Fines','Fine Adjustment / Waiver History','Library Clearance','Damaged / Lost Book Reports','Book Repair Queue','End-of-Year Library Clearance'],
+  'Inventory':['Inventory & Shelf Audit','Stock Reconciliation','Book Condition Tracking','Missing Book Review','Library Equipment Tracking','Shelf Transfer / Relocation Log','Annual Inventory Closing'],
   'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Library Calendar','Library Feedback & Suggestions'],
   'Acquisitions':['Acquisition Requests','Approved Requests','Ordered Books','Received Books','Teacher Resource Requests','Budget & Acquisition Tracking','Publisher / Supplier Directory'],
   'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library Audit Trail','Library Incident & Behavior Log','Full Library Backup & Restore']
@@ -3924,6 +3924,190 @@ libraryView=function(view){
     const wrap=el('div',undefined,'parent-form');
     wrap.append(input,status);
     r.append(wrap);
+  }
+  syncFeatureHighlights();
+};
+
+/* Librarian reservation expiry, fine history, service queue, and annual inventory closing pack */
+if(!Array.isArray(libraryState.fineAdjustments))libraryState.fineAdjustments=[
+  {id:'FINE-001',loanId:'LN-1002',borrower:'Jamie Dela Cruz',oldAmount:30,newAmount:20,reason:'Approved partial waiver',action:'Adjusted',date:'2026-09-21'}
+];
+if(!Array.isArray(libraryState.serviceQueue))libraryState.serviceQueue=[
+  {id:'Q-001',number:1,name:'Alex Santos',service:'Borrow / Return',status:'Waiting',created:'2026-09-22 09:05'},
+  {id:'Q-002',number:2,name:'Mika Reyes',service:'Library Clearance',status:'Waiting',created:'2026-09-22 09:08'}
+];
+if(!Array.isArray(libraryState.inventoryClosings))libraryState.inventoryClosings=[];
+librarySave();
+
+const libraryViewControlBase=libraryView;
+libraryView=function(view){
+  const special=['Reservation Expiry Management','Fine Adjustment / Waiver History','Library Service Counter Queue','Annual Inventory Closing'];
+  if(!special.includes(view))return libraryViewControlBase(view);
+  featureOpened(view);
+  currentModule=view;
+  if(typeof libraryAudit==='function')libraryAudit('Opened '+view,view);
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Reservation Expiry Management'){
+    const holds=Array.isArray(libraryState.holds)?libraryState.holds:[];
+    r.append(card('RESERVATION EXPIRY MANAGEMENT',[
+      holds.length+' reservation / hold record(s)',
+      'Track Ready reservations and release unclaimed holds after their pickup deadline.'
+    ]));
+    if(!holds.length){
+      r.append(el('p','No reservation records are available yet. Create one first in Reservations / Hold Queue.','hint'));
+    }else{
+      holds.forEach(h=>{
+        if(!h.readyDate&&h.status==='Ready')h.readyDate=staffDate();
+        if(!h.expiryDate&&h.status==='Ready'){
+          const d=new Date((h.readyDate||staffDate())+'T12:00:00+08:00');d.setDate(d.getDate()+3);
+          h.expiryDate=d.toISOString().slice(0,10);
+        }
+        const expired=h.status==='Ready'&&h.expiryDate&&h.expiryDate<staffDate();
+        const box=card((h.id||'HOLD')+' · '+(h.title||h.bookId||'Reserved item'),[
+          'Borrower · '+(h.borrower||h.borrowerName||h.borrowerId||'—'),
+          'Status · '+(h.status||'Waiting'),
+          h.readyDate?'Ready since · '+h.readyDate:'Not ready for pickup',
+          h.expiryDate?'Pickup deadline · '+h.expiryDate:'No expiry date yet',
+          expired?'EXPIRY ALERT · Pickup deadline has passed':''
+        ].filter(Boolean));
+        if(h.status==='Waiting')box.append(action('MARK READY + 3-DAY PICKUP',()=>{
+          h.status='Ready';h.readyDate=staffDate();
+          const d=new Date(staffDate()+'T12:00:00+08:00');d.setDate(d.getDate()+3);
+          h.expiryDate=d.toISOString().slice(0,10);
+          if(typeof libraryAudit==='function')libraryAudit('Marked reservation '+(h.id||'')+' ready','Reservation Expiry Management');
+          librarySave('Reservation marked ready with pickup deadline.');libraryView(view);
+        },'primary'));
+        if(h.status==='Ready')box.append(
+          action('EXTEND 3 DAYS',()=>{
+            const base=new Date((h.expiryDate||staffDate())+'T12:00:00+08:00');base.setDate(base.getDate()+3);
+            h.expiryDate=base.toISOString().slice(0,10);
+            librarySave('Reservation deadline extended.');libraryView(view);
+          },'outline'),
+          action('RELEASE HOLD',()=>{
+            h.status='Expired / Released';h.releasedDate=staffDate();
+            if(typeof libraryAudit==='function')libraryAudit('Released reservation '+(h.id||''),'Reservation Expiry Management');
+            librarySave('Reservation released.');libraryView(view);
+          },expired?'primary':'outline')
+        );
+        r.append(box);
+      });
+    }
+  }
+
+  if(view==='Fine Adjustment / Waiver History'){
+    r.append(card('FINE ADJUSTMENT / WAIVER HISTORY',[
+      libraryState.fineAdjustments.length+' adjustment record(s)',
+      'Preserve the original amount, new amount, reason, and action instead of silently changing fines.'
+    ]));
+    const activeLoans=libraryState.loans||[];
+    r.append(form([
+      {key:'loanId',label:'Loan ID'},
+      {key:'newAmount',label:'New fine amount (₱)',type:'number'},
+      {key:'reason',label:'Reason for adjustment / waiver',type:'textarea'},
+      {key:'action',label:'Action',options:['Adjusted','Waived']}
+    ],'SAVE FINE ADJUSTMENT',v=>{
+      const l=activeLoans.find(x=>x.id===v.loanId.trim());
+      if(!l){feedback('Loan ID not found.');return}
+      const oldAmount=Number(l.fine||0);
+      const newAmount=v.action==='Waived'?0:Math.max(0,Number(v.newAmount)||0);
+      l.fine=newAmount;
+      libraryState.fineAdjustments.unshift({
+        id:'FINE-'+Date.now().toString().slice(-6),loanId:l.id,borrower:l.borrower,
+        oldAmount,newAmount,reason:v.reason||'No reason entered',action:v.action,date:staffDate()
+      });
+      if(typeof libraryAudit==='function')libraryAudit(v.action+' fine for '+l.id,'Fine Adjustment / Waiver History');
+      librarySave('Fine adjustment saved with history.');
+      libraryView(view);
+    }));
+    r.append(table(
+      ['Date','Loan','Borrower','Old','New','Action','Reason'],
+      libraryState.fineAdjustments.map(x=>[
+        x.date,x.loanId,x.borrower,'₱'+Number(x.oldAmount||0).toFixed(2),
+        '₱'+Number(x.newAmount||0).toFixed(2),x.action,x.reason
+      ])
+    ));
+  }
+
+  if(view==='Library Service Counter Queue'){
+    const waiting=libraryState.serviceQueue.filter(x=>x.status==='Waiting');
+    const serving=libraryState.serviceQueue.find(x=>x.status==='Serving');
+    const nextNo=Math.max(0,...libraryState.serviceQueue.map(x=>Number(x.number)||0))+1;
+    r.append(card('LIBRARY SERVICE COUNTER QUEUE',[
+      'Now serving · '+(serving?'Q-'+String(serving.number).padStart(3,'0')+' · '+serving.name:'None'),
+      'Waiting · '+waiting.length,
+      'Services: Borrow / Return, Clearance, Card Replacement, Reservation, Inquiry'
+    ]));
+    r.append(form([
+      {key:'name',label:'Client name'},
+      {key:'service',label:'Service',options:['Borrow / Return','Library Clearance','Card Replacement','Reservation / Hold','General Inquiry']}
+    ],'ADD TO QUEUE',v=>{
+      const now=new Date();
+      const time=now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Manila'});
+      libraryState.serviceQueue.push({
+        id:'Q-'+Date.now().toString().slice(-6),number:nextNo,name:v.name,service:v.service,
+        status:'Waiting',created:staffDate()+' '+time
+      });
+      librarySave('Queue number Q-'+String(nextNo).padStart(3,'0')+' added.');
+      libraryView(view);
+    }));
+    if(!serving&&waiting.length)r.append(action('CALL NEXT',()=>{
+      const n=libraryState.serviceQueue.find(x=>x.status==='Waiting');
+      if(n){n.status='Serving';n.called=staffDate();librarySave('Now serving Q-'+String(n.number).padStart(3,'0'));libraryView(view)}
+    },'primary'));
+    if(serving)r.append(action('COMPLETE CURRENT',()=>{
+      serving.status='Completed';serving.completed=staffDate();
+      if(typeof libraryAudit==='function')libraryAudit('Completed service queue Q-'+serving.number,'Library Service Counter Queue');
+      librarySave('Current service completed.');libraryView(view);
+    },'primary'));
+    r.append(table(
+      ['Queue','Name','Service','Status','Created'],
+      libraryState.serviceQueue.slice().sort((a,b)=>Number(a.number)-Number(b.number)).map(x=>[
+        'Q-'+String(x.number).padStart(3,'0'),x.name,x.service,x.status,x.created
+      ])
+    ));
+  }
+
+  if(view==='Annual Inventory Closing'){
+    const reconciliations=Array.isArray(libraryState.reconciliation)?libraryState.reconciliation:[];
+    const latestByBook=new Map();
+    reconciliations.forEach(x=>{if(!latestByBook.has(x.bookId))latestByBook.set(x.bookId,x)});
+    const variances=[...latestByBook.values()].filter(x=>Number(x.variance||0)!==0);
+    const openRepairs=(libraryState.repairs||[]).filter(x=>x.status!=='Returned to Shelf').length;
+    const missing=(libraryState.books||[]).filter(x=>String(x.status).toLowerCase().includes('missing')).length;
+    const currentYear='2026-2027';
+    const closed=libraryState.inventoryClosings.some(x=>x.schoolYear===currentYear&&x.status==='Closed');
+    r.append(card('ANNUAL INVENTORY CLOSING · '+currentYear,[
+      'Catalog titles · '+libraryState.books.length,
+      'Reconciliation records · '+reconciliations.length,
+      'Unresolved variances · '+variances.length,
+      'Open repair items · '+openRepairs,
+      'Books marked missing · '+missing,
+      'Status · '+(closed?'CLOSED':'OPEN')
+    ]));
+    if(variances.length)r.append(table(
+      ['Book ID','Title','Catalog','Physical','Variance'],
+      variances.map(x=>[x.bookId,x.title,x.catalog,x.physical,x.variance])
+    ));
+    if(!closed)r.append(action('CLOSE ANNUAL INVENTORY',()=>{
+      if(!confirm('Close the '+currentYear+' inventory cycle? This records the current snapshot.'))return;
+      libraryState.inventoryClosings.unshift({
+        id:'CLOSE-'+Date.now().toString().slice(-6),schoolYear:currentYear,date:staffDate(),status:'Closed',
+        titles:libraryState.books.length,variances:variances.length,openRepairs,missing
+      });
+      if(typeof libraryAudit==='function')libraryAudit('Closed annual inventory '+currentYear,'Annual Inventory Closing');
+      librarySave('Annual inventory cycle closed.');
+      libraryView(view);
+    },'primary'));
+    if(libraryState.inventoryClosings.length){
+      r.append(el('h2','Closing History'));
+      r.append(table(
+        ['School Year','Date','Titles','Variances','Open Repairs','Missing','Status'],
+        libraryState.inventoryClosings.map(x=>[x.schoolYear,x.date,x.titles,x.variances,x.openRepairs,x.missing,x.status])
+      ));
+    }
+    r.append(action('PRINT / SAVE INVENTORY CLOSING',()=>window.print(),'outline'));
   }
   syncFeatureHighlights();
 };
