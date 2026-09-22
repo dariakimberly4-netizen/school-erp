@@ -26,11 +26,11 @@ jobs:
           else
             python - <<'PY'
           from pathlib import Path
-          import textwrap
           wf=Path('.github/workflows/add-librarian-final-pack.yml').read_text(encoding='utf-8')
           start=wf.index("python - <<'PY'")+len("python - <<'PY'\n")
           end=wf.index("\n          PY",start)
-          code=textwrap.dedent(wf[start:end])
+          raw=wf[start:end].splitlines()
+          code='\n'.join((line[10:] if line.startswith('          ') else line) for line in raw)
           exec(compile(code,'embedded_librarian_patch.py','exec'))
           PY
             git config user.name "School Orbit Bot"
