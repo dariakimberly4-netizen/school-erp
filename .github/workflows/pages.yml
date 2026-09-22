@@ -4,7 +4,7 @@ on:
     branches: ["main"]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -18,6 +18,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Apply Librarian QA cleanup once
+        shell: bash
+        run: |
+          if grep -q "LIBRARIAN QA CLEANUP 2026-09-22" docs/index.html; then
+            echo "Librarian QA cleanup already applied"
+          else
+            python scripts/run_librarian_qa_cleanup.py
+            python - <<'PY'
+          from pathlib import Path
+          import re
+          c=Path('docs/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',c,re.S)
+          Path('/tmp/school-orbit.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY
+            node --check /tmp/school-orbit.js
+            git config user.name "School Orbit QA Bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/index.html
+            git commit -m "QA cleanup Librarian workflows and data consistency"
+            git push
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
