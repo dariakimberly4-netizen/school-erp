@@ -1,0 +1,218 @@
+name: Add Librarian Governance Pack
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-librarian-governance-pack.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Librarian governance pack
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('docs/index.html')
+          c=p.read_text(encoding='utf-8')
+          def rep(a,b,label):
+              global c
+              if a not in c:
+                  raise SystemExit('Missing '+label)
+              c=c.replace(a,b,1)
+
+          rep("""'Librarian:reading-room-reservation':'librarian-reading-room-reservation-2026-09-22-v1',
+'Librarian:closing-checklist':'librarian-closing-checklist-2026-09-22-v1',
+'Librarian:data-quality':'librarian-data-quality-2026-09-22-v1',
+'Librarian:weeding-review':'librarian-weeding-review-2026-09-22-v1'""",
+              """'Librarian:policy-ack':'librarian-policy-ack-2026-09-22-v1',
+'Librarian:training-log':'librarian-training-log-2026-09-22-v1',
+'Librarian:collection-age':'librarian-collection-age-2026-09-22-v1',
+'Librarian:occupancy':'librarian-occupancy-2026-09-22-v1'""",'release batch')
+
+          rep("""if(role==='Librarian'&&label==='Reading Room Reservation')return 'Librarian:reading-room-reservation';
+if(role==='Librarian'&&label==='Library Closing Checklist')return 'Librarian:closing-checklist';
+if(role==='Librarian'&&label==='Duplicate / Data Quality Checker')return 'Librarian:data-quality';
+if(role==='Librarian'&&label==='Collection Weeding Review')return 'Librarian:weeding-review';
+return null;""",
+              """if(role==='Librarian'&&label==='Policy Acknowledgement')return 'Librarian:policy-ack';
+if(role==='Librarian'&&label==='Library Training & Certification Log')return 'Librarian:training-log';
+if(role==='Librarian'&&label==='Collection Age Analysis')return 'Librarian:collection-age';
+if(role==='Librarian'&&label==='Library Occupancy Monitor')return 'Librarian:occupancy';
+return null;""",'feature ids')
+
+          rep("""if(activeRole==='Librarian'&&b.classList.contains('node')){
+  if(label==='Programs & Engagement'&&featureUnseen('Librarian:reading-room-reservation'))unseen=true;
+  if(label==='Library Dashboard'&&featureUnseen('Librarian:closing-checklist'))unseen=true;
+  if(label==='Catalog & Collection'&&(featureUnseen('Librarian:data-quality')||featureUnseen('Librarian:weeding-review')))unseen=true;
+}""",
+              """if(activeRole==='Librarian'&&b.classList.contains('node')){
+  if(label==='Library Dashboard'&&(featureUnseen('Librarian:policy-ack')||featureUnseen('Librarian:training-log')))unseen=true;
+  if(label==='Reports'&&featureUnseen('Librarian:collection-age'))unseen=true;
+  if(label==='Programs & Engagement'&&featureUnseen('Librarian:occupancy'))unseen=true;
+}""",'highlights')
+
+          rep("'Library Dashboard':['Today’s Library Overview','Daily Operations Dashboard','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Closing Checklist','Library Settings','Library Notifications','User Access & Permissions'],",
+              "'Library Dashboard':['Today’s Library Overview','Daily Operations Dashboard','Circulation Summary','Overdue Alerts','Inventory Status','Quick Actions','Library Closing Checklist','Policy Acknowledgement','Library Training & Certification Log','Library Settings','Library Notifications','User Access & Permissions'],",'dashboard menu')
+          rep("'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Reading Room Reservation','Library Calendar','Library Feedback & Suggestions','Lost & Found Management'],",
+              "'Programs & Engagement':['Reading Program Tracker','Popular Books / Most Borrowed','Library Visit Log','Library Announcements','Reading Room / Seat Management','Reading Room Reservation','Library Occupancy Monitor','Library Calendar','Library Feedback & Suggestions','Lost & Found Management'],",'programs menu')
+          rep("'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library KPI Dashboard','Library Audit Trail','Library Incident & Behavior Log','Full Library Backup & Restore']",
+              "'Reports':['Reports & Export Center','Circulation Report','Overdue Report','Inventory Report','Visitor Report','Reading Program Report','Year-End Statistics Dashboard','Library KPI Dashboard','Collection Age Analysis','Library Audit Trail','Library Incident & Behavior Log','Full Library Backup & Restore']",'reports menu')
+
+          anchor="const librarianModuleBase=openModule;"
+          if anchor not in c: raise SystemExit('Missing module anchor')
+          block=r'''
+/* Librarian policy, training, collection age, and occupancy pack */
+if(!Array.isArray(libraryState.policies))libraryState.policies=[
+  {id:'POL-001',title:'Library Circulation and Borrowing Procedure',version:'1.0',effective:'2026-09-01',status:'Active'},
+  {id:'POL-002',title:'Closing and Security Checklist',version:'1.0',effective:'2026-09-15',status:'Active'}
+];
+if(!Array.isArray(libraryState.policyAcknowledgements))libraryState.policyAcknowledgements=[];
+if(!Array.isArray(libraryState.libraryTraining))libraryState.libraryTraining=[
+  {id:'TRN-001',staff:'Head Librarian',title:'Library Records and Data Privacy Orientation',provider:'CDGC',date:'2026-08-20',certificate:'CERT-2026-001',expiry:'2027-08-20',status:'Completed'}
+];
+if(!Array.isArray(libraryState.occupancyLog))libraryState.occupancyLog=[];
+if(!Number.isFinite(Number(libraryState.occupancyCapacity)))libraryState.occupancyCapacity=40;
+librarySave();
+
+const libraryViewGovernanceBase=libraryView;
+libraryView=function(view){
+  const special=['Policy Acknowledgement','Library Training & Certification Log','Collection Age Analysis','Library Occupancy Monitor'];
+  if(!special.includes(view))return libraryViewGovernanceBase(view);
+  featureOpened(view);currentModule=view;
+  if(typeof libraryAudit==='function')libraryAudit('Opened '+view,view);
+  const r=demoPanel(view,'Librarian workspace · Demo');
+  $('module-back').hidden=true;
+
+  if(view==='Policy Acknowledgement'){
+    const staff=['Head Librarian','Assistant Librarian'];
+    r.append(card('POLICY ACKNOWLEDGEMENT',[
+      libraryState.policies.filter(x=>x.status==='Active').length+' active policy document(s)',
+      'Track which library staff have acknowledged current procedures and updates.'
+    ]));
+    r.append(form([
+      {key:'title',label:'Policy / procedure title'},
+      {key:'version',label:'Version'},
+      {key:'effective',label:'Effective date',type:'date'}
+    ],'ADD POLICY',v=>{
+      libraryState.policies.unshift({id:'POL-'+Date.now().toString().slice(-6),...v,status:'Active'});
+      if(typeof libraryAudit==='function')libraryAudit('Added policy '+v.title,'Policy Acknowledgement');
+      librarySave('Policy added.');libraryView(view);
+    }));
+    libraryState.policies.forEach(p=>{
+      const acked=libraryState.policyAcknowledgements.filter(a=>a.policyId===p.id).map(a=>a.staff);
+      const box=card(p.id+' · '+p.title,[
+        'Version · '+p.version,
+        'Effective · '+p.effective,
+        'Status · '+p.status,
+        'Acknowledged · '+acked.length+' of '+staff.length
+      ]);
+      staff.forEach(name=>{
+        if(!acked.includes(name))box.append(action('ACKNOWLEDGE · '+name,()=>{
+          libraryState.policyAcknowledgements.unshift({id:'ACK-'+Date.now().toString().slice(-6),policyId:p.id,policyTitle:p.title,staff:name,date:staffDate()});
+          if(typeof libraryAudit==='function')libraryAudit(name+' acknowledged '+p.id,'Policy Acknowledgement');
+          librarySave('Policy acknowledgement recorded.');libraryView(view);
+        },'outline'));
+      });
+      if(p.status==='Active')box.append(action('ARCHIVE POLICY',()=>{p.status='Archived';librarySave('Policy archived.');libraryView(view)},'outline'));
+      r.append(box);
+    });
+    if(libraryState.policyAcknowledgements.length)r.append(table(['Date','Staff','Policy'],libraryState.policyAcknowledgements.map(a=>[a.date,a.staff,a.policyTitle])));
+  }
+
+  if(view==='Library Training & Certification Log'){
+    r.append(card('LIBRARY TRAINING & CERTIFICATION LOG',[
+      libraryState.libraryTraining.length+' training / certification record(s)',
+      'Track seminars, certificates, completion dates, and renewal or expiry dates.'
+    ]));
+    r.append(form([
+      {key:'staff',label:'Staff name'},
+      {key:'title',label:'Training / certification'},
+      {key:'provider',label:'Provider / organizer'},
+      {key:'date',label:'Completion date',type:'date'},
+      {key:'certificate',label:'Certificate / reference no.'},
+      {key:'expiry',label:'Renewal / expiry date',type:'date'}
+    ],'ADD TRAINING RECORD',v=>{
+      libraryState.libraryTraining.unshift({id:'TRN-'+Date.now().toString().slice(-6),...v,status:'Completed'});
+      if(typeof libraryAudit==='function')libraryAudit('Added training record for '+v.staff,'Library Training & Certification Log');
+      librarySave('Training record added.');libraryView(view);
+    }));
+    const today=staffDate();
+    r.append(table(['Staff','Training / Certification','Provider','Completed','Certificate','Expiry','Status'],libraryState.libraryTraining.map(x=>{
+      let s=x.status||'Completed';
+      if(x.expiry){const days=Math.ceil((new Date(x.expiry+'T12:00:00+08:00')-new Date(today+'T12:00:00+08:00'))/86400000);if(days<0)s='Expired';else if(days<=60)s='Renew Soon';}
+      return [x.staff,x.title,x.provider,x.date,x.certificate||'—',x.expiry||'—',s];
+    })));
+  }
+
+  if(view==='Collection Age Analysis'){
+    const nowYear=Number(staffDate().slice(0,4));
+    const buckets={'0–5 years':0,'6–10 years':0,'11–20 years':0,'21+ years':0,'Year unknown':0};
+    const older=[];
+    (libraryState.books||[]).forEach(b=>{
+      const y=Number(b.publicationYear||b.year||b.publishedYear||0);
+      if(!y||y<1000||y>nowYear){buckets['Year unknown']++;return}
+      const age=nowYear-y;
+      if(age<=5)buckets['0–5 years']++;
+      else if(age<=10)buckets['6–10 years']++;
+      else if(age<=20)buckets['11–20 years']++;
+      else buckets['21+ years']++;
+      if(age>10)older.push([b.id,b.title,b.category||'—',y,age+' years',b.shelf||'—']);
+    });
+    r.append(card('COLLECTION AGE ANALYSIS',[
+      (libraryState.books||[]).length+' catalog title(s) reviewed',
+      older.length+' title(s) older than 10 years based on available publication-year data',
+      'Age alone does not mean a book should be removed; use this as a review aid.'
+    ]));
+    r.append(table(['Age Band','Titles'],Object.entries(buckets)));
+    if(older.length)r.append(table(['Book ID','Title','Category','Year','Age','Shelf'],older));
+    else r.append(card('NO OLDER TITLES DETECTED',['No title with a known publication year is currently over 10 years old.']));
+  }
+
+  if(view==='Library Occupancy Monitor'){
+    const active=libraryState.occupancyLog.filter(x=>x.status==='Inside');
+    const capacity=Math.max(1,Number(libraryState.occupancyCapacity)||40);
+    const available=Math.max(0,capacity-active.length);
+    const pct=Math.min(100,Math.round(active.length/capacity*100));
+    r.append(card('LIBRARY OCCUPANCY MONITOR',[
+      'Current occupancy · '+active.length+' / '+capacity,
+      'Available spaces · '+available,
+      'Occupancy · '+pct+'%',
+      active.length>=capacity?'STATUS · FULL':'STATUS · OPEN'
+    ]));
+    r.append(form([
+      {key:'name',label:'Visitor / student name'},
+      {key:'type',label:'Visitor type',options:['Student','Teacher','Staff','Parent','Guest']}
+    ],'CHECK IN',v=>{
+      if(libraryState.occupancyLog.filter(x=>x.status==='Inside').length>=capacity){feedback('Library is at capacity.');return}
+      const time=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Manila'});
+      libraryState.occupancyLog.unshift({id:'VIS-'+Date.now().toString().slice(-6),name:v.name,type:v.type,date:staffDate(),checkIn:time,checkOut:'',status:'Inside'});
+      librarySave('Visitor checked in.');libraryView(view);
+    }));
+    active.forEach(x=>{
+      const box=card(x.name+' · '+x.type,['Checked in · '+x.checkIn,'Visit ID · '+x.id]);
+      box.append(action('CHECK OUT',()=>{
+        x.status='Exited';x.checkOut=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Manila'});
+        librarySave('Visitor checked out.');libraryView(view);
+      },'primary'));
+      r.append(box);
+    });
+    r.append(table(['Date','Visitor','Type','In','Out','Status'],libraryState.occupancyLog.slice(0,50).map(x=>[x.date,x.name,x.type,x.checkIn,x.checkOut||'—',x.status])));
+  }
+  syncFeatureHighlights();
+};
+'''
+          c=c.replace(anchor,block+'\n'+anchor,1)
+          p.write_text(c,encoding='utf-8')
+          PY
+      - name: Commit patched page
+        run: |
+          git config user.name "School Orbit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Add Librarian policy training collection age and occupancy"
+          git push
