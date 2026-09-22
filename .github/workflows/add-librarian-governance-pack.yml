@@ -216,3 +216,4 @@ libraryView=function(view){
           git diff --cached --quiet && exit 0
           git commit -m "Add Librarian policy training collection age and occupancy"
           git push
+# trigger governance pack
