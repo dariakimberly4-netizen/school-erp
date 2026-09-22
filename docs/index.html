@@ -184,6 +184,11 @@ input,select,textarea{font-size:16px!important;line-height:1.4}
 
 
 
+/* LIBRARIAN FINAL VISUALS 2026-09-22 */
+
+/* LIBRARIAN FINAL VISUALS 2026-09-22 */
+#app:has(#new-feature-banner[hidden]) .orbit-wrap:has(#orbit .librarian-node){margin-top:-76px!important}
+@media(max-width:650px){#app:has(#new-feature-banner[hidden]) .orbit-wrap:has(#orbit .librarian-node){margin-top:-38px!important}}
 /* LIBRARIAN VISUAL CLEANUP 2026-09-22 */
 
 /* LIBRARIAN VISUAL CLEANUP 2026-09-22 */
@@ -4911,7 +4916,7 @@ render=function(){
     el('span',available+' available · '+activeLoans+' on loan · '+overdue+' overdue','center-count')
   );
   old.replaceWith(center);
-  $('welcome').textContent='Library operations hub';
+  $('welcome').textContent='Librarian Orbit';
 };
 const adminBeforeCorrections=staffAdmin;
 staffAdmin=function(view){if(view!=='Staff Requests')return adminBeforeCorrections(view);if(activeRole!=='Administrator')return;featureOpened(view);currentModule=staffOfficeMenu;const r=demoPanel(view,'Administrator · Attendance and leave approvals');$('module-back').hidden=false;if(!staff.requests.length)r.append(el('p','No requests yet.'));staff.requests.forEach(q=>{const c=card(q.type+' · '+q.id,[staff.profile.name,q.status,q.start?q.start+' to '+q.end:q.date||'',q.category||q.item||'',q.details,q.timeIn?'Requested times: '+q.timeIn+' → '+q.timeOut:'',q.remark||'']);if(q.status==='Pending')c.append(form([{key:'decision',label:'Decision for '+q.id,options:['Approved','Declined']},{key:'remark',label:'Remarks for '+q.id,type:'textarea'}],'Save decision',v=>{if(q.status!=='Pending')return;if(v.decision==='Approved'&&q.type==='Attendance correction'){if(!q.timeIn||!q.timeOut){feedback('This older correction has no structured times. Decline it and ask Staff to resubmit using the updated form.');return}const before=staff.attendance.find(a=>a.date===q.date);const after={date:q.date,in:manilaDateTime(q.date,q.timeIn),out:manilaDateTime(q.date,q.timeOut)};staff.corrections=staff.corrections||[];staff.corrections.push({requestId:q.id,date:q.date,before:before?{...before}:null,after:{...after},reason:q.details,reviewed:new Date().toISOString()});if(before)Object.assign(before,after);else staff.attendance.push(after)}if(v.decision==='Approved'&&q.type==='Leave'){if(!leaveAllowance[q.category]||q.start?.slice(0,4)!==q.end?.slice(0,4)||!leaveDays(q)){feedback('This request needs a valid leave type and date range. Ask Staff to resubmit.');return}if(leaveDays(q)>leaveTotals(q.category,q.start.slice(0,4)).remaining){feedback('Insufficient remaining leave balance.');return}}q.status=v.decision;q.remark=v.remark;q.reviewed=new Date().toISOString();q.reviewer='Administrator demo';staffNotice(q.type+' '+q.status.toLowerCase()+': '+q.remark,'Request Tracker');const ok=staffSave('Administrator '+q.status.toLowerCase()+' '+q.type);render();staffAdmin(view);feedback(ok?'Decision saved. Attendance and leave totals are updated where applicable.':'Updated for this session; browser saving failed.')}));r.append(c)});syncFeatureHighlights();};
