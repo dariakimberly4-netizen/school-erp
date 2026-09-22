@@ -112,3 +112,4 @@ if(migratedBehavior.length){
           git diff --cached --quiet && exit 0
           git commit -m "QA cleanup Librarian workflows and data consistency"
           git push
+# trigger qa cleanup
